@@ -1,0 +1,2 @@
+config BOARD_K4W
+	select SOC_NRF52833_QDAA

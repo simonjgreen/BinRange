@@ -1,0 +1,7 @@
+BinRange test-rig firmware
+Version: v1.0 (frozen test-phase source)
+Purpose: bench characterization of two Makerfabs ESP32 UWB DW3000 WROVER boards
+Protocol: SS-TWR, distinct from the MQTT/DS-TWR deployment firmware
+Toolchain: PlatformIO 6.2.0, espressif32@6.5.0, Arduino, esp-wrover-kit
+Driver: Makerfabs Dw3000 library in lib/ (examples removed)
+Provisioned binaries/checksums and raw captures are local-only, not distributed.

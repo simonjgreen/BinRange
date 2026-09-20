@@ -1,0 +1,6 @@
+board:
+  name: k4w
+  full_name: KKM K4W test tag
+  vendor: others
+  socs:
+    - name: nrf52833

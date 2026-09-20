@@ -1,0 +1,21 @@
+manifest:
+  projects:
+    - name: nrf
+      url: https://github.com/nrfconnect/sdk-nrf
+      # Nordic SDK v3.3.0; its manifest pins every imported dependency.
+      revision: ba167d9f3db4abbdc9b67887ca3ea66c64f2d956
+      import:
+        name-allowlist:
+          - zephyr
+          - cmsis
+          - cmsis_6
+          - hal_nordic
+          - segger
+          - picolibc
+          - nrfxlib
+          - mcuboot
+          - mbedtls
+          - oberon-psa-crypto
+          - zcbor
+  self:
+    path: application

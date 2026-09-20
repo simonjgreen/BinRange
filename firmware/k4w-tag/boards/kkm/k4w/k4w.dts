@@ -1,0 +1,91 @@
+/dts-v1/;
+#include <nordic/nrf52833_qdaa.dtsi>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/pinctrl/nrf-pinctrl.h>
+
+/ {
+	model = "KKM K4W test tag";
+	compatible = "kkm,k4w";
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+	};
+};
+
+&gpio0 {
+	status = "okay";
+	/* Keep LIS3DH in I2C mode, address 0x19, without driving a strap. */
+	sensor_mode {
+		gpio-hog;
+		gpios = <15 GPIO_PULL_UP>, <17 GPIO_PULL_UP>;
+		input;
+	};
+};
+&gpio1 { status = "okay"; };
+&gpiote { status = "okay"; };
+
+&pinctrl {
+	sensor_i2c: sensor_i2c {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 0, 9)>, <NRF_PSEL(TWIM_SDA, 0, 20)>;
+			bias-pull-up;
+		};
+	};
+	sensor_i2c_sleep: sensor_i2c_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 0, 9)>, <NRF_PSEL(TWIM_SDA, 0, 20)>;
+			low-power-enable;
+			bias-pull-up;
+		};
+	};
+	uwb_sleep: uwb_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 31)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 30)>, <NRF_PSEL(SPIM_MISO, 0, 28)>;
+			low-power-enable;
+		};
+	};
+	uwb_default: uwb_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 31)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 30)>,
+				<NRF_PSEL(SPIM_MISO, 0, 28)>;
+		};
+	};
+};
+
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <100000>;
+	pinctrl-0 = <&sensor_i2c>;
+	pinctrl-1 = <&sensor_i2c_sleep>;
+	pinctrl-names = "default", "sleep";
+	zephyr,pm-device-runtime-auto;
+	accel: accelerometer@19 {
+		compatible = "st,lis3dh", "st,lis2dh";
+		reg = <0x19>;
+		irq-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		anym-on-int1;
+		int2-gpio-config = <1>; /* any-motion handler uses this even on INT1 */
+	};
+};
+
+&adc { status = "okay"; };
+
+&spi1 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-0 = <&uwb_default>;
+	pinctrl-1 = <&uwb_sleep>;
+	pinctrl-names = "default", "sleep";
+	zephyr,pm-device-runtime-auto;
+	cs-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+	uwb: uwb@0 {
+		compatible = "qorvo,dw3110";
+		reg = <0>;
+		spi-max-frequency = <2000000>;
+		reset-gpios = <&gpio0 29 GPIO_ACTIVE_LOW>;
+		irq-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+	};
+};

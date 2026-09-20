@@ -1,0 +1,55 @@
+# Build output
+.pio/
+__pycache__/
+*.pyc
+
+# Local toolchain
+.venv-pio/
+.venv-probe/
+
+# Secrets — never commit
+**/secrets.h
+**/secrets.yaml
+**/secrets.ini
+
+# Root PDFs are local purchase paperwork / vendor-confidential references.
+/*.pdf
+
+# Home Assistant long-lived token, for verification scripts
+.ha-token
+
+# Private hardware backups and downloaded probe build dependencies
+local-backups/
+firmware/nesso-probe/upstream/
+firmware/nesso-probe/build/
+firmware/nesso-probe/sdkconfig
+firmware/nesso-probe/sdkconfig.old
+firmware/nesso-probe/sdkconfig.nesso*
+firmware/nesso-probe/managed_components/
+
+# Deployment-only data and provisioned builds; publish source, not credentials.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.bin
+*.hex
+*.elf
+*.har
+docs/build-log/
+firmware/test-rig/release/
+firmware/k4w-tag/release/
+firmware/test-rig/scripts/*.csv*
+
+# Household-specific HA helpers and capture tools remain usable locally.
+/scripts/ha-dashboard.py
+/scripts/ha_bin_status.py
+/scripts/ha_bin_battery.py
+/scripts/ha_monitoring.py
+/scripts/test_ha_dashboard.py
+/scripts/test_ha_bin_status.py
+/scripts/test_ha_bin_battery.py
+/scripts/test_ha_monitoring.py
+/scripts/walktest.py
+/scripts/walkrecord.py

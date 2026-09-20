@@ -1,0 +1,10 @@
+description: BinRange DW3110 raw SPI hardware boundary
+compatible: "qorvo,dw3110"
+include: spi-device.yaml
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+  irq-gpios:
+    type: phandle-array
+    required: true
