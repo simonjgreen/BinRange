@@ -1,0 +1,27 @@
+{
+  "version": "7.1.0",
+  "name": "3 mm cone roots and centred vents",
+  "status": "working",
+  "physical_tested": null,
+  "feedback": "User accepted v7.1.0 as the working design and requested commit/push. No separate quantified physical test report was supplied.",
+  "base_family": "v7",
+  "compatible_base_versions": [
+    "7.0.0",
+    "7.1.0"
+  ],
+  "compatible_lid_versions": [
+    "7.0.0",
+    "7.1.0"
+  ],
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v7.1.0-base.stl",
+      "sha256": "d105cefad0b3d674e7aac808c11cfafa785980a0de2e780d5ef2aa487e1315d6"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v7.1.0-lid.stl",
+      "sha256": "de62fd00dd3c80ebd486372af3ad104a91d016861902a4c0100cf138a9334fd6"
+    }
+  },
+  "accepted_by_user": true
+}

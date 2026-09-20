@@ -1,0 +1,19 @@
+{
+  "version": "3.0.0",
+  "name": "M2 nuts and bolts",
+  "status": "rejected",
+  "feedback": "PLA fit and small hardware were impractical.",
+  "base_family": "v3",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v3.0.0-base.stl",
+      "sha256": "77973424ba8df1950b692ecedc31b3372c6c4320677b1518b98081d8f8e14330",
+      "original": "legacy/v3-m2-nuts/base-v3-m2-nuts.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v3.0.0-lid.stl",
+      "sha256": "f444b0776210c0d9c0653eb1214fed6c48a994b9404cd039daecd2373113dd7e",
+      "original": "legacy/v3-m2-nuts/lid-v3-m2-clamp.stl"
+    }
+  }
+}

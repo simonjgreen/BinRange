@@ -1,0 +1,19 @@
+{
+  "version": "6.0.0",
+  "name": "Torsion-arm catches",
+  "status": "untested-superseded",
+  "feedback": "CAD checks only; no physical result reported.",
+  "base_family": "v5",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v6.0.0-base.stl",
+      "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+      "original": "exports/base-v5-internal-lip.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v6.0.0-lid.stl",
+      "sha256": "d41a69f537fcfc54f3f585ad2367ac50c58ce5b20d23f4cebc34742b88563407",
+      "original": "revisions/v6-torsion-catches/exports/lid-v6-torsion-catches.stl"
+    }
+  }
+}

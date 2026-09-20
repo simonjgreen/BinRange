@@ -1,0 +1,6 @@
+# Treat exported meshes as binary artifacts in reviews; retain exact bytes.
+*.stl binary
+
+# Keep downloaded PCB evidence and generated SVG formatting intact.
+sources/*.brd -whitespace
+sources/*.svg -whitespace

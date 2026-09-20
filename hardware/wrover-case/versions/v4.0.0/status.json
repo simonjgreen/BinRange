@@ -1,0 +1,19 @@
+{
+  "version": "4.0.0",
+  "name": "External flexible clips",
+  "status": "partial-success",
+  "feedback": "Board pegs and hold-down springs worked; lid retention and lateral location failed.",
+  "base_family": "v4",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v4.0.0-base.stl",
+      "sha256": "c1f07e0cc2c89d531c8b77cfe77deeb38fcda649280bece7d6baa8d1f19bc193",
+      "original": "legacy/v4-external-clips/base-v4-screwless.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v4.0.0-lid.stl",
+      "sha256": "7b10841e5cde16cb7e77db98a0bf6cc3b6b8ce84d59e8ff083b232eb1caa8378",
+      "original": "legacy/v4-external-clips/lid-v4-snap.stl"
+    }
+  }
+}

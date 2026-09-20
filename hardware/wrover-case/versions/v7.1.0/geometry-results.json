@@ -1,0 +1,57 @@
+{
+  "board_seating": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "closed": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "rigid_insertion": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "components": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "catch_left": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "catch_right": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "release": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "release_board": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "allowed_play": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "locating_x": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "locating_y": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  }
+}

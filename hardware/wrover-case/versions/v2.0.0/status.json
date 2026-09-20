@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "name": "Recessed M2.5 screws",
+  "status": "superseded",
+  "feedback": "Small screw fastening abandoned.",
+  "base_family": "v2",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v2.0.0-base.stl",
+      "sha256": "7c082019b0c0a65ac2927ac8f6d6893c3488e3d34b3722f31f4be05d13959b49",
+      "original": "legacy/v2-m25-recessed/base.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v2.0.0-lid.stl",
+      "sha256": "e781f2f64ced14fb5bacbbfd61f2b23c957009c274c043623d02267698d9ec75",
+      "original": "legacy/v2-m25-recessed/lid-m25x8-recessed.stl"
+    }
+  }
+}

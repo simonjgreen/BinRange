@@ -1,0 +1,26 @@
+{
+  "version": "7.0.0",
+  "name": "Overlapping shells with distributed beads",
+  "status": "user-tested",
+  "physical_tested": true,
+  "feedback": "User reports v7.0.0 is really good; requests wider cone roots for less PCB movement and centred vents. No quantified retention, temperature or endurance results.",
+  "base_family": "v7",
+  "compatible_base_versions": [
+    "7.0.0",
+    "7.1.0"
+  ],
+  "compatible_lid_versions": [
+    "7.0.0",
+    "7.1.0"
+  ],
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v7.0.0-base.stl",
+      "sha256": "dd0a993e42655aa665db9c3bff2037ac197602a0e8f318eadde3d1e8843d0190"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v7.0.0-lid.stl",
+      "sha256": "c5aa2ba26e231edf0f62a3600827fe5e99920f20ee11e25d664db7400feb309e"
+    }
+  }
+}

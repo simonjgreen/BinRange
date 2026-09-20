@@ -1,0 +1,198 @@
+{
+  "next_candidate": null,
+  "versions": [
+    {
+      "version": "1.0.0",
+      "name": "Original screwed enclosure",
+      "status": "historical-source-unavailable",
+      "feedback": "Initial board fit check passed. No standalone v1 source identified; do not reconstruct it from later files."
+    },
+    {
+      "version": "2.0.0",
+      "name": "Recessed M2.5 screws",
+      "status": "superseded",
+      "feedback": "Small screw fastening abandoned.",
+      "base_family": "v2",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v2.0.0-base.stl",
+          "sha256": "7c082019b0c0a65ac2927ac8f6d6893c3488e3d34b3722f31f4be05d13959b49",
+          "original": "legacy/v2-m25-recessed/base.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v2.0.0-lid.stl",
+          "sha256": "e781f2f64ced14fb5bacbbfd61f2b23c957009c274c043623d02267698d9ec75",
+          "original": "legacy/v2-m25-recessed/lid-m25x8-recessed.stl"
+        }
+      }
+    },
+    {
+      "version": "3.0.0",
+      "name": "M2 nuts and bolts",
+      "status": "rejected",
+      "feedback": "PLA fit and small hardware were impractical.",
+      "base_family": "v3",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v3.0.0-base.stl",
+          "sha256": "77973424ba8df1950b692ecedc31b3372c6c4320677b1518b98081d8f8e14330",
+          "original": "legacy/v3-m2-nuts/base-v3-m2-nuts.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v3.0.0-lid.stl",
+          "sha256": "f444b0776210c0d9c0653eb1214fed6c48a994b9404cd039daecd2373113dd7e",
+          "original": "legacy/v3-m2-nuts/lid-v3-m2-clamp.stl"
+        }
+      }
+    },
+    {
+      "version": "4.0.0",
+      "name": "External flexible clips",
+      "status": "partial-success",
+      "feedback": "Board pegs and hold-down springs worked; lid retention and lateral location failed.",
+      "base_family": "v4",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v4.0.0-base.stl",
+          "sha256": "c1f07e0cc2c89d531c8b77cfe77deeb38fcda649280bece7d6baa8d1f19bc193",
+          "original": "legacy/v4-external-clips/base-v4-screwless.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v4.0.0-lid.stl",
+          "sha256": "7b10841e5cde16cb7e77db98a0bf6cc3b6b8ce84d59e8ff083b232eb1caa8378",
+          "original": "legacy/v4-external-clips/lid-v4-snap.stl"
+        }
+      }
+    },
+    {
+      "version": "5.0.0",
+      "name": "Internal lip, 0.6 mm hooks",
+      "status": "partial-success",
+      "feedback": "Close fit; hook retention too weak.",
+      "base_family": "v5",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v5.0.0-base.stl",
+          "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+          "original": "exports/base-v5-internal-lip.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v5.0.0-lid.stl",
+          "sha256": "d21335176b992b16aca507df06fd9179095250eb06826e275b9caacb96f421b6",
+          "original": "exports/lid-v5-internal-snap.stl"
+        }
+      }
+    },
+    {
+      "version": "5.1.0",
+      "name": "Internal lip, 1.0 mm hooks",
+      "status": "partial-success",
+      "feedback": "Improved retention; still pulls off too easily.",
+      "base_family": "v5",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v5.1.0-base.stl",
+          "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+          "original": "exports/base-v5-internal-lip.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v5.1.0-lid.stl",
+          "sha256": "e10623e11d6dd6a68a065a5a7fec2cbd2b910cbd0c860741b876de8551b35b15",
+          "original": "exports/lid-v5-1-deeper-hooks.stl"
+        }
+      }
+    },
+    {
+      "version": "5.2.0",
+      "name": "Full-wall 3.0 mm hooks",
+      "status": "failed",
+      "feedback": "Both catches snapped at their lid roots during insertion.",
+      "base_family": "v5",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v5.2.0-base.stl",
+          "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+          "original": "exports/base-v5-internal-lip.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v5.2.0-lid.stl",
+          "sha256": "6a309c700ef4e14d64c7f86dbc821e4002bb7139b2a3d118b18173a4b187ae60",
+          "original": "trials/v5-2-full-wall-hooks/exports/lid-v5-2-full-wall-trial.stl"
+        }
+      }
+    },
+    {
+      "version": "6.0.0",
+      "name": "Torsion-arm catches",
+      "status": "untested-superseded",
+      "feedback": "CAD checks only; no physical result reported.",
+      "base_family": "v5",
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v6.0.0-base.stl",
+          "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+          "original": "exports/base-v5-internal-lip.stl"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v6.0.0-lid.stl",
+          "sha256": "d41a69f537fcfc54f3f585ad2367ac50c58ce5b20d23f4cebc34742b88563407",
+          "original": "revisions/v6-torsion-catches/exports/lid-v6-torsion-catches.stl"
+        }
+      }
+    },
+    {
+      "version": "7.0.0",
+      "name": "Overlapping shells with distributed beads",
+      "status": "user-tested",
+      "physical_tested": true,
+      "feedback": "User reports v7.0.0 is really good; requests wider cone roots for less PCB movement and centred vents. No quantified retention, temperature or endurance results.",
+      "base_family": "v7",
+      "compatible_base_versions": [
+        "7.0.0",
+        "7.1.0"
+      ],
+      "compatible_lid_versions": [
+        "7.0.0",
+        "7.1.0"
+      ],
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v7.0.0-base.stl",
+          "sha256": "dd0a993e42655aa665db9c3bff2037ac197602a0e8f318eadde3d1e8843d0190"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v7.0.0-lid.stl",
+          "sha256": "c5aa2ba26e231edf0f62a3600827fe5e99920f20ee11e25d664db7400feb309e"
+        }
+      }
+    },
+    {
+      "version": "7.1.0",
+      "name": "3 mm cone roots and centred vents",
+      "status": "working",
+      "physical_tested": null,
+      "feedback": "User accepted v7.1.0 as the working design and requested commit/push. No separate quantified physical test report was supplied.",
+      "base_family": "v7",
+      "compatible_base_versions": [
+        "7.0.0",
+        "7.1.0"
+      ],
+      "compatible_lid_versions": [
+        "7.0.0",
+        "7.1.0"
+      ],
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v7.1.0-base.stl",
+          "sha256": "d105cefad0b3d674e7aac808c11cfafa785980a0de2e780d5ef2aa487e1315d6"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v7.1.0-lid.stl",
+          "sha256": "de62fd00dd3c80ebd486372af3ad104a91d016861902a4c0100cf138a9334fd6"
+        }
+      },
+      "accepted_by_user": true
+    }
+  ],
+  "working_version": "7.1.0"
+}

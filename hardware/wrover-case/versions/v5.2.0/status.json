@@ -1,0 +1,19 @@
+{
+  "version": "5.2.0",
+  "name": "Full-wall 3.0 mm hooks",
+  "status": "failed",
+  "feedback": "Both catches snapped at their lid roots during insertion.",
+  "base_family": "v5",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v5.2.0-base.stl",
+      "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+      "original": "exports/base-v5-internal-lip.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v5.2.0-lid.stl",
+      "sha256": "6a309c700ef4e14d64c7f86dbc821e4002bb7139b2a3d118b18173a4b187ae60",
+      "original": "trials/v5-2-full-wall-hooks/exports/lid-v5-2-full-wall-trial.stl"
+    }
+  }
+}

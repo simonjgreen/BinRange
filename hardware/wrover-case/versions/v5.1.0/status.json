@@ -1,0 +1,19 @@
+{
+  "version": "5.1.0",
+  "name": "Internal lip, 1.0 mm hooks",
+  "status": "partial-success",
+  "feedback": "Improved retention; still pulls off too easily.",
+  "base_family": "v5",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v5.1.0-base.stl",
+      "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+      "original": "exports/base-v5-internal-lip.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v5.1.0-lid.stl",
+      "sha256": "e10623e11d6dd6a68a065a5a7fec2cbd2b910cbd0c860741b876de8551b35b15",
+      "original": "exports/lid-v5-1-deeper-hooks.stl"
+    }
+  }
+}

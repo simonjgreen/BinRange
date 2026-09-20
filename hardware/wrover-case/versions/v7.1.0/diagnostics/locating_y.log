@@ -1,0 +1,16 @@
+ECHO: "v7.1.0 matched pair: 86 x 46.6 x 17.6 mm"
+ECHO: "Net bead engagement: 0.4; clearance-envelope release: 0.6 mm"
+ECHO: "Nominal retained PCB spring deflection: 0.6"
+Geometries in cache: 56
+Geometry cache size in bytes: 949880
+CGAL Polyhedrons in cache: 20
+CGAL cache size in bytes: 12593008
+Total rendering time: 0:00:02.833
+   Top level object is a 3D object:
+   Simple:        yes
+   Vertices:      200
+   Halfedges:     600
+   Edges:         300
+   Halffacets:    208
+   Facets:        104
+   Volumes:         3

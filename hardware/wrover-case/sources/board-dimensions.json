@@ -1,0 +1,35 @@
+{
+  "source_url": "https://github.com/Makerfabs/Makerfabs-ESP32-UWB-DW3000/blob/main/hardware/ESP32%20UWB%20v1.0.brd",
+  "retrieved": "2026-09-19",
+  "sha256": "5068aaef332aa515aa8c325e9151a0ed582f79ca9226b1d13a4c6ad416c3e977",
+  "units": "mm",
+  "pcb_length": 72.0,
+  "pcb_width": 32.6,
+  "mounting_holes": [
+    {
+      "x": 2.0,
+      "y": 2.0,
+      "radius": 1.5
+    },
+    {
+      "x": 2.0,
+      "y": 30.6,
+      "radius": 1.5
+    },
+    {
+      "x": 70.0,
+      "y": 30.6,
+      "radius": 1.5
+    },
+    {
+      "x": 70.0,
+      "y": 2.0,
+      "radius": 1.5
+    }
+  ],
+  "hole_pitch": [
+    68.0,
+    28.6
+  ],
+  "caution": "Legacy CAD; current USB-C revision only photo-cross-checked. Heights not specified by this outline."
+}

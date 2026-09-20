@@ -1,0 +1,19 @@
+{
+  "version": "5.0.0",
+  "name": "Internal lip, 0.6 mm hooks",
+  "status": "partial-success",
+  "feedback": "Close fit; hook retention too weak.",
+  "base_family": "v5",
+  "assets": {
+    "base": {
+      "file": "exports/wrover-case-v5.0.0-base.stl",
+      "sha256": "2f8827b35800cae5f41df8f91171a715bcc5c51dc4a97c1576727b7be49039f8",
+      "original": "exports/base-v5-internal-lip.stl"
+    },
+    "lid": {
+      "file": "exports/wrover-case-v5.0.0-lid.stl",
+      "sha256": "d21335176b992b16aca507df06fd9179095250eb06826e275b9caacb96f421b6",
+      "original": "exports/lid-v5-internal-snap.stl"
+    }
+  }
+}
