@@ -12,6 +12,7 @@
 #include "admin.h"
 #include "tag_updater.h"
 #include "update_mqtt.h"
+#include "motion_mqtt.h"
 
 static void wifi_connect() {
   WiFi.mode(WIFI_STA);
@@ -135,6 +136,7 @@ void loop() {
   publisher_loop();
   tag_updater_loop();
   update_mqtt_loop();
+  motion_mqtt_loop();
 
   static uint32_t last_try = 0;
   if (WiFi.status() != WL_CONNECTED && millis() - last_try > 15000) {

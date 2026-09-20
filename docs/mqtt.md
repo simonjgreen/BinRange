@@ -112,3 +112,56 @@ status-only; broker credentials do not grant admin authority.
 
 Use trusted-LAN HTTP/MQTT, not direct Internet exposure. Broker reconnects publish
 coherent last state with its true age.
+
+## Changing tag check-in intervals
+
+After installing an anchor build with motion-setting controls, open the tag's
+Home Assistant device page under **Settings → Devices & services → MQTT**. Its
+Configuration section includes:
+
+- **Stationary check-in interval:** 60–3,600 seconds (default 600).
+- **Moving check-in interval:** 1–60 seconds (default 5).
+- **Read check-in intervals:** refreshes the values from the tag.
+
+The two number controls accept whole seconds. They require the tag to be adopted
+and paired with this anchor, running confirmed tag firmware **0.2.6 or later** (configuration schema 1).
+The matching anchor firmware is **0.2.4 or later**. Pairing remains an explicit operation in the anchor UI.
+The anchor must be within Bluetooth range; UWB range alone is not sufficient.
+No Home Assistant YAML or additional service is required. MQTT discovery creates
+these controls on the existing tag device. Unpaired controls are unavailable.
+
+A change queues behind current firmware maintenance. The anchor connects using
+its existing authenticated bond, verifies the tag's hardware identity, reads all
+five motion settings, changes only the requested interval, saves the complete
+record, reads it back, and checks that application finished without a sensor
+error. Sensitivity, motion duration, settling time and the other interval are
+preserved. Changes survive tag restarts; reflashing is unnecessary.
+
+**Check-in settings status** and **Check-in settings error** expose queue,
+read/write, verification and failure state. The number values come from confirmed
+tag settings, not an optimistic echo of the requested value. An uncertain write
+makes them unknown. If a tag is unreachable or a request fails, bring it into
+Bluetooth range and use **Read check-in intervals** before resubmitting a change.
+Failed writes are not automatically replayed. Pending commands are volatile:
+after an anchor restart it reads the tag again instead of replaying commands.
+Initial reads happen for paired adopted tags, with read-only refreshes every
+15 minutes, including after failed reads. These retries only read settings;
+they never replay a failed write. The refresh button requests an earlier read.
+
+| Topic | Payload |
+| --- | --- |
+| `binrange/tag/<tag>/anchor/a/motion/idle/set` | Stationary interval in whole seconds |
+| `binrange/tag/<tag>/anchor/a/motion/moving/set` | Moving interval in whole seconds |
+| `binrange/tag/<tag>/anchor/a/motion/refresh/set` | `PRESS` |
+| `binrange/tag/<tag>/anchor/a/motion` | Retained JSON: availability, confirmed `idle_ms` / `moving_ms` (or null), status, pending, error and observation age |
+
+Commands must be non-retained. The discovery payloads set `retain: false` and
+`optimistic: false`, following the [MQTT Number contract](https://www.home-assistant.io/integrations/number.mqtt/).
+The broker's normal authentication and ACLs govern who can change intervals;
+limit publishing on these command topics to authorized Home Assistant clients.
+Removing adoption cancels queued settings work and removes retained settings
+state and discovery. It does not erase the tag's saved settings or Bluetooth bond.
+
+The anchor web UI's radio interval and the adoption record's `stale_after` remain
+separate from the tag's reporting intervals. Longer intervals reduce reporting
+frequency; battery-life effects still need whole-device measurements.

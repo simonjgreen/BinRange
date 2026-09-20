@@ -623,8 +623,17 @@ void test_commissioning_checkpoint_failure_preserves_existing_last_association()
 void setUp() {}
 void tearDown() {}
 
+#include "motion_tests.h"
+
 int main(int, char **) {
     UNITY_BEGIN();
+    RUN_TEST(test_motion_queues_second_change_without_losing_first);
+    RUN_TEST(test_motion_lost_write_reply_never_claims_success_or_replays);
+    RUN_TEST(test_motion_insecure_unsupported_denied_and_sensor_fault_do_not_succeed);
+    RUN_TEST(test_motion_waits_for_update_session_and_forget_cancels_queued_work);
+    RUN_TEST(test_motion_forget_during_session_removes_state_after_disconnect);
+    RUN_TEST(test_motion_preserves_tuning_and_confirms_application);
+    RUN_TEST(test_motion_rejects_invalid_unpaired_and_wrong_identity);
     RUN_TEST(test_queue_requires_a_commissioned_target);
     RUN_TEST(test_upload_verifies_inactive_hash_then_checkpoints_before_test);
     RUN_TEST(test_insecure_link_becomes_needs_action_without_an_smp_request);

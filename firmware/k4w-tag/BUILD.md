@@ -133,3 +133,20 @@ then release to input rather than driving it high.
 Keep known-good signed images/manifests/hashes privately. Direct-boot diagnostic
 binaries are not OTA payloads or shortcuts for MCUboot-equipped tags.
 Preserve vendor source notices; see [third-party notes](../../docs/third-party.md).
+
+
+### Home Assistant interval controls (0.2.6+)
+
+Use tag firmware 0.2.6+ with anchor firmware 0.2.4+ for the Home Assistant
+stationary/moving interval controls described in [MQTT](../../docs/mqtt.md#changing-tag-check-in-intervals).
+Group 64 command 2 and its five-field persistent record remain compatible.
+Tag status adds `config_schema: 1`: `config_pending` now stays true until the
+main owner has applied both the motion policy and sensor configuration. A
+revision acknowledgment preserves a newer pending write arriving during that
+application. `sensor_error` is checked after pending clears. Older firmware can
+still be updated using the existing anchor updater, but the new interval
+controller will not write to it until this stronger status contract is available.
+
+Build and deploy the application through the existing signed-update process;
+do not replace an installed bootloader or signing key. Configuration operations
+persist the settings in `motion/v1` without changing provisioning or bonds.

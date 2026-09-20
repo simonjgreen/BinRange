@@ -11,6 +11,18 @@ enum class UpdatePairingPhase : uint8_t {
     Idle, Connecting, Securing, Checking, Disconnecting, Successful, Failed
 };
 
+enum class MotionPhase : uint8_t { Unknown, Queued, Reading, Writing, Verifying, Applied, Failed };
+struct MotionSettings {
+    uint16_t tag = 0;
+    MotionPhase phase = MotionPhase::Unknown;
+    bool known = false;
+    SmpMotionConfig config{};
+    uint32_t idle_ms = 0, moving_ms = 0; // queued patch; zero preserves the tag's value
+    bool queued = false;
+    uint64_t changed_ms = 0, seen_ms = 0;
+    char error[80]{};
+};
+
 // Controller-owned asynchronous boundary. The worker must copy each submitted
 // command and return an event with the exact operation/session IDs. submit(false)
 // means nothing was queued. Disconnect is idempotent, cancels pending operations,
@@ -75,6 +87,7 @@ struct UpdateControllerSnapshot {
     bool staging_available;
     bool disabled;
     bool disconnecting;
+    MotionSettings motion[UPDATE_SNAPSHOT_MAX_ASSOCIATIONS];
     char error[80];
     struct Pairing {
         UpdatePairingPhase phase;
@@ -103,6 +116,9 @@ class UpdateController {
     void loop(uint64_t now);
     bool snapshot(UpdateControllerSnapshot &out) const;
     bool busy() const;
+    // Zero/zero reads only. Patches queue behind updates and use a fresh tag read.
+    UpdateQueueResult motion_request(uint16_t tag, uint32_t idle_ms, uint32_t moving_ms, uint64_t now);
+    void motion_forget(uint16_t tag, uint64_t now);
 
   private:
     UpdateAssociation *association(uint16_t tag);
@@ -127,6 +143,10 @@ class UpdateController {
     bool pairing_active() const;
     void pairing_fail(const char *error, uint64_t now);
     void pairing_finish_close(uint64_t now);
+    void motion_start(size_t slot, uint64_t now);
+    void motion_handle(const UpdateTransportEvent &event, uint64_t now);
+    void motion_fail(const char *error, uint64_t now);
+    bool motion_send(SmpCommand command, uint64_t now);
 
     enum class Await : uint8_t { None, Connected, Secured, Reply, Poll, Disconnected };
 
@@ -164,4 +184,11 @@ class UpdateController {
     bool pairing_success_ = false;
     char pairing_error_[80]{};
     uint64_t pairing_changed_ms_ = 0;
+    MotionSettings motion_[UPDATE_SNAPSHOT_MAX_ASSOCIATIONS]{};
+    size_t motion_active_ = UPDATE_SNAPSHOT_MAX_ASSOCIATIONS;
+    SmpMotionConfig motion_target_{};
+    uint32_t motion_idle_ = 0, motion_moving_ = 0;
+    bool motion_verifying_ = false;
+    bool motion_forgetting_ = false;
+    uint64_t motion_apply_until_ = 0;
 };

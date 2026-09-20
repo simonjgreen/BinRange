@@ -9,6 +9,8 @@ int br_power_settings_init(void);
 int br_power_config_save(const struct br_motion_config *config);
 void br_power_config_get(struct br_motion_config *config);
 bool br_power_take_config(struct br_motion_config *config);
+/* Main owner only, after policy and sensor application (including error capture). */
+void br_power_config_applied(void);
 int br_power_sensors_configure(const struct br_motion_config *config);
 bool br_power_sensor_check(void);
 bool br_power_motion_event(void);

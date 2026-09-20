@@ -1,6 +1,7 @@
 /* System ON idle: the motion IRQ, BLE callbacks and key can wake the main owner.
  * No System OFF, automatic UICR programming or assumed battery percentage. */
 #include "tag_power.h"
+#include "motion_settings.h"
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/i2c.h>
@@ -14,7 +15,7 @@
 
 static K_SEM_DEFINE(wake, 0, 1);
 static K_MUTEX_DEFINE(config_lock);
-static struct br_motion_config wanted;
+static struct br_motion_settings motion_settings;
 static struct br_power_status status = { .sensor_error = -ENODEV };
 static atomic_t motion_pending, irq_count;
 static const struct device *const accel = DEVICE_DT_GET(DT_NODELABEL(accel));
@@ -33,19 +34,18 @@ static int config_load(const char *name, size_t len, settings_read_cb read, void
     if (strcmp(name, "v1")) return -ENOENT;
     if (len != sizeof(next) || read(arg, &next, sizeof(next)) != sizeof(next) ||
         !br_motion_config_valid(&next)) return -EINVAL;
-    wanted = next;
+    br_motion_settings_saved(&motion_settings, &next);
     return 0;
 }
 static struct settings_handler settings = { .name = "motion", .h_set = config_load };
 
 int br_power_settings_init(void) {
-    br_motion_defaults(&wanted);
-    status.config_pending = true;
+    br_motion_settings_init(&motion_settings);
     return settings_register(&settings);
 }
 void br_power_config_get(struct br_motion_config *config) {
     k_mutex_lock(&config_lock, K_FOREVER);
-    *config = wanted;
+    *config = motion_settings.wanted;
     k_mutex_unlock(&config_lock);
 }
 int br_power_config_save(const struct br_motion_config *config) {
@@ -53,18 +53,21 @@ int br_power_config_save(const struct br_motion_config *config) {
     k_mutex_lock(&config_lock, K_FOREVER);
     /* Do not claim a change accepted if persistence failed. One complete record. */
     int rc = settings_save_one("motion/v1", config, sizeof(*config));
-    if (!rc) { wanted = *config; status.config_pending = true; }
+    if (!rc) br_motion_settings_saved(&motion_settings, config);
     k_mutex_unlock(&config_lock);
     if (!rc) br_app_wake();
     return rc;
 }
 bool br_power_take_config(struct br_motion_config *config) {
     k_mutex_lock(&config_lock, K_FOREVER);
-    bool pending = status.config_pending;
-    *config = wanted;
-    status.config_pending = false;
+    bool pending = br_motion_settings_take(&motion_settings, config);
     k_mutex_unlock(&config_lock);
     return pending;
+}
+void br_power_config_applied(void) {
+    k_mutex_lock(&config_lock, K_FOREVER);
+    br_motion_settings_applied(&motion_settings);
+    k_mutex_unlock(&config_lock);
 }
 static void motion(const struct device *dev, const struct sensor_trigger *trig) {
     ARG_UNUSED(dev); ARG_UNUSED(trig);
@@ -156,6 +159,7 @@ void br_power_observe(bool moving, uint32_t wakes, uint16_t mv, uint16_t misses,
 void br_power_status_get(struct br_power_status *out) {
     k_mutex_lock(&config_lock, K_FOREVER);
     *out = status;
+    out->config_pending = motion_settings.pending;
     out->irq_count = (uint32_t)atomic_get(&irq_count);
     k_mutex_unlock(&config_lock);
 }

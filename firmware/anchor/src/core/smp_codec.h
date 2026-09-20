@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-enum class SmpCommand { ImageList, TagStatus, Upload, Trial, Reset };
+enum class SmpCommand { ImageList, TagStatus, Upload, Trial, Reset, ConfigRead, ConfigWrite };
 enum class SmpFeed { More, Complete, Error };
 enum class SmpOutcome { Ok, Denied };
 
@@ -25,7 +25,16 @@ struct SmpTag {
     uint64_t uptime_ms;
     uint32_t reset_reason;
     bool confirmed, maintenance, radio_ok, ble_ok;
+    bool config_status_known, config_pending;
+    int32_t sensor_error;
 };
+struct SmpMotionConfig {
+    uint32_t moving_ms, idle_ms, quiet_ms, threshold_mg, duration_samples;
+};
+bool smp_motion_valid(const SmpMotionConfig &config);
+bool smp_motion_equal(const SmpMotionConfig &a, const SmpMotionConfig &b);
+bool smp_encode_config(uint8_t sequence, const SmpMotionConfig &config,
+                       uint8_t *out, size_t capacity, size_t &written);
 struct SmpReply {
     SmpOutcome outcome;
     uint16_t error_group;
@@ -34,6 +43,7 @@ struct SmpReply {
     SmpImage images[2];
     size_t image_count;
     uint32_t offset;
+    SmpMotionConfig config;
 };
 
 // No writes to out on failure; written is always zero on failure.

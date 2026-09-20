@@ -577,8 +577,56 @@ static void abort_during_payload_and_late_packets_cannot_reuse_reply() {
     TEST_ASSERT_NULL(a.reply());
 }
 
+// Break caught: wrong group/id, partial tuning or invalid values reaching a tag.
+static void motion_config_wire_and_validation() {
+    uint8_t out[512]; size_t written = 0;
+    TEST_ASSERT_TRUE(smp_encode_request(SmpCommand::ConfigRead, 0, nullptr, out, sizeof(out), written));
+    auto read = hex("0000000100400002a0");
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(read.data(), out, read.size());
+    SmpMotionConfig config{5000, 300000, 45000, 320, 3};
+    TEST_ASSERT_TRUE(smp_encode_config(7, config, out, sizeof(out), written));
+    auto expected = hex("0200004900400702a5696d6f76696e675f6d731913886769646c655f6d731a000493e06871756965745f6d7319afc86c7468726573686f6c645f6d67190140706475726174696f6e5f73616d706c657303");
+    TEST_ASSERT_EQUAL_UINT(expected.size(), written);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected.data(), out, written);
+    expected[0] = 3; // tag returns the full saved configuration
+    SmpAssembler a; TEST_ASSERT_TRUE(a.begin(SmpCommand::ConfigWrite, 7));
+    TEST_ASSERT_EQUAL_INT((int)SmpFeed::Complete, (int)a.feed(expected.data(), expected.size()));
+    TEST_ASSERT_EQUAL_UINT32(300000, a.reply()->config.idle_ms);
+    TEST_ASSERT_EQUAL_UINT32(320, a.reply()->config.threshold_mg);
+    config.idle_ms = 59999;
+    memset(out, 0x55, sizeof(out));
+    TEST_ASSERT_FALSE(smp_encode_config(7, config, out, sizeof(out), written));
+    TEST_ASSERT_EQUAL_UINT(0, written);
+    TEST_ASSERT_EQUAL_HEX8(0x55, out[0]);
+    a.abort(); a.begin(SmpCommand::ConfigWrite, 7);
+    expected.back() = 0; // invalid duration must not become confirmed state
+    TEST_ASSERT_EQUAL_INT((int)SmpFeed::Error, (int)a.feed(expected.data(), expected.size()));
+    auto empty = hex("0100000100400002a0");
+    a.abort(); a.begin(SmpCommand::ConfigRead, 0);
+    TEST_ASSERT_EQUAL_INT((int)SmpFeed::Error, (int)a.feed(empty.data(), empty.size()));
+}
+
+static void config_status_requires_application_schema_and_decodes_signed_errors() {
+    auto fields = tag_fields();
+    fields.push_back({"config_pending", hex("f4")});
+    fields.push_back({"sensor_error", hex("00")});
+    auto old = parse(SmpCommand::TagStatus, map(fields));
+    TEST_ASSERT_FALSE(old.tag.config_status_known);
+    fields.push_back({"config_schema", hex("01")});
+    auto current = parse(SmpCommand::TagStatus, map(fields));
+    TEST_ASSERT_TRUE(current.tag.config_status_known);
+    TEST_ASSERT_FALSE(current.tag.config_pending);
+    fields[fields.size()-2].second = hex("24"); // -5
+    current = parse(SmpCommand::TagStatus, map(fields));
+    TEST_ASSERT_EQUAL_INT32(-5, current.tag.sensor_error);
+    fields.back().second = hex("02");
+    TEST_ASSERT_FALSE(parse(SmpCommand::TagStatus, map(fields)).tag.config_status_known);
+}
+
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(config_status_requires_application_schema_and_decodes_signed_errors);
+    RUN_TEST(motion_config_wire_and_validation);
     RUN_TEST(request_mappings_and_capacity);
     RUN_TEST(upload_wire_and_boundaries);
     RUN_TEST(offsets_resume_stall_and_overflow);

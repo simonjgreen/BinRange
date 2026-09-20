@@ -40,6 +40,8 @@ static void log_line(const char *topic, const char *payload) {
 static void on_message(char *topic, byte *payload, unsigned int len) {
     // PubSubClient hands us a non-terminated buffer.
     static char buf[512];
+    // Never execute a truncated command or accept a NUL-hidden suffix.
+    if (len >= sizeof(buf) || memchr(payload, 0, len)) return;
     unsigned int n = len < sizeof(buf) - 1 ? len : sizeof(buf) - 1;
     memcpy(buf, payload, n);
     buf[n] = '\0';
@@ -78,6 +80,8 @@ static void on_connect() {
     topic_tag_config_wildcard(t, sizeof(t));
     client.subscribe(t);
     topic_anchor_cmd_wildcard(t, sizeof(t), ANCHOR_ID);
+    client.subscribe(t);
+    snprintf(t, sizeof(t), BINRANGE_TOPIC_BASE "/tag/+/anchor/%s/motion/+/set", ANCHOR_ID);
     client.subscribe(t);
     Serial.printf("[mqtt] connected to %s\n", broker_desc);
 }

@@ -64,7 +64,10 @@ coverage and unattended BLE maintenance are still under evaluation.
 Default tag behavior is immediate motion reporting, about 5 s while moving,
 settling after 30 s quiet, and a 10 min stationary check-in. Motion sensitivity
 is tunable; missing-check-in monitoring is separate from short-term range
-freshness. The initial absence threshold is six hours.
+freshness. The initial absence threshold is six hours. Paired tags expose
+stationary and moving check-in interval controls in Home Assistant; the anchor
+applies them over authenticated Bluetooth and verifies the saved values.
+See [check-in interval controls](docs/mqtt.md#changing-tag-check-in-intervals).
 
 One anchor measures **distance, not direction or coordinates**. A Home/Out
 distance threshold is site-specific; it cannot distinguish equal-radius places.

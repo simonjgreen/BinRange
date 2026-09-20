@@ -101,7 +101,7 @@ bool UpdateController::pairing_active() const {
            pairing_phase_ == UpdatePairingPhase::Disconnecting;
 }
 
-bool UpdateController::busy() const { return active_job_id_ || pairing_active() || await_ == Await::Disconnected; }
+bool UpdateController::busy() const { return active_job_id_ || motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS || pairing_active() || await_ == Await::Disconnected; }
 
 UpdateAssociation *UpdateController::association(uint16_t tag) {
     for (size_t i = 0; i < association_count_; ++i)
@@ -242,7 +242,8 @@ bool UpdateController::submit(UpdateTransportCommandKind kind, SmpCommand smp,
     }
     UpdateJob *job = queue_.find(active_job_id_);
     const UpdateAssociation *a = job ? association(job->target().tag) :
-        (pairing_active() ? &pairing_association_ : nullptr);
+        (pairing_active() ? &pairing_association_ :
+         (motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS ? association(motion_[motion_active_].tag) : nullptr));
     if (!a || (job && !same_target(job->target(), a->target))) return false;
     UpdateTransportCommand command = {};
     command.kind = kind;
@@ -272,8 +273,11 @@ bool UpdateController::submit(UpdateTransportCommandKind kind, SmpCommand smp,
                       stage_bytes_ + sent_offset_, chunk};
             payload = &upload;
         }
-        if (!smp_encode_request(smp, sequence_++, payload, command.frame,
-                                sizeof(command.frame), command.frame_size)) return false;
+        const uint8_t sequence = sequence_++;
+        const bool encoded = smp == SmpCommand::ConfigWrite
+            ? smp_encode_config(sequence, motion_target_, command.frame, sizeof(command.frame), command.frame_size)
+            : smp_encode_request(smp, sequence, payload, command.frame, sizeof(command.frame), command.frame_size);
+        if (!encoded) return false;
     }
     const bool submitted = transport_->submit(command);
     if (kind == UpdateTransportCommandKind::Security && pairing_active()) {
@@ -294,7 +298,7 @@ bool UpdateController::submit(UpdateTransportCommandKind kind, SmpCommand smp,
 }
 
 void UpdateController::close(uint64_t now, uint64_t delay) {
-    if ((!active_job_id_ && !pairing_active()) || await_ == Await::Disconnected) return;
+    if ((!active_job_id_ && !pairing_active() && motion_active_ == UPDATE_SNAPSHOT_MAX_ASSOCIATIONS) || await_ == Await::Disconnected) return;
     await_ = Await::Disconnected;
     deadline_ = now + kRequestDeadline;
     if (cooldown_until_ < now + delay) cooldown_until_ = now + delay;
@@ -307,6 +311,10 @@ void UpdateController::finish_close() {
     stage_borrowed_ = false;
     stage_bytes_ = nullptr;
     active_job_id_ = 0;
+    if (motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS && motion_forgetting_)
+        motion_[motion_active_] = {};
+    motion_forgetting_ = false;
+    motion_active_ = UPDATE_SNAPSHOT_MAX_ASSOCIATIONS;
     await_ = Await::None;
     disconnect_submitted_ = false;
 }
@@ -445,7 +453,7 @@ void UpdateController::inspect_or_upload(const SmpReply &reply, uint64_t now) {
 }
 
 void UpdateController::handle(const UpdateTransportEvent &event, uint64_t now) {
-    if ((!active_job_id_ && !pairing_active()) || event.operation != operation_ || event.session != session_) return;
+    if ((!active_job_id_ && !pairing_active() && motion_active_ == UPDATE_SNAPSHOT_MAX_ASSOCIATIONS) || event.operation != operation_ || event.session != session_) return;
     if (await_ == Await::Disconnected) {
         if (disconnect_submitted_ && event.kind == UpdateTransportEventKind::Disconnected) {
             if (pairing_active()) pairing_finish_close(now); else finish_close();
@@ -453,6 +461,7 @@ void UpdateController::handle(const UpdateTransportEvent &event, uint64_t now) {
         return;
     }
     if (disabled_) return;
+    if (motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS) { motion_handle(event, now); return; }
     if (pairing_active()) {
         if (event.kind == UpdateTransportEventKind::Failed || event.kind == UpdateTransportEventKind::Disconnected) {
             pairing_fail(event.failure == UpdateTransportFailure::Transient ?
@@ -557,10 +566,17 @@ void UpdateController::loop(uint64_t now) {
     if (!ready_) return;
     // Overdue callbacks cannot authorize another write. Even when disabled,
     // process quiescence ACKs, but keep borrowed memory until one actually arrives.
-    if ((active_job_id_ || pairing_active()) && await_ != Await::Disconnected) {
+    if ((active_job_id_ || pairing_active() || motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS) && await_ != Await::Disconnected) {
         const size_t slot = index(active_job_id_);
         UpdateJob *job = queue_.find(active_job_id_);
         if (disabled_) close(now);
+        else if (motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS) {
+            if (now - session_started_ >= kSessionDeadline || (motion_apply_until_ && now >= motion_apply_until_))
+                motion_fail("Tag settings application timed out; read settings or retry", now);
+            else if (await_ == Await::Poll && now >= deadline_) motion_send(SmpCommand::TagStatus, now);
+            else if (await_ != Await::Poll && now >= deadline_)
+                motion_fail("Bluetooth operation timed out; read settings or retry", now);
+        }
         else if (pairing_active() && now - session_started_ >= kSessionDeadline)
             pairing_fail("BLE session deadline expired", now);
         else if (pairing_active() && now >= deadline_)
@@ -577,7 +593,7 @@ void UpdateController::loop(uint64_t now) {
     }
     UpdateTransportEvent event = {};
     for (unsigned i = 0; i < 8 && transport_->poll(event); ++i) handle(event, now);
-    if ((active_job_id_ || pairing_active()) && await_ == Await::Disconnected) {
+    if ((active_job_id_ || pairing_active() || motion_active_ != UPDATE_SNAPSHOT_MAX_ASSOCIATIONS) && await_ == Await::Disconnected) {
         if (now >= deadline_) {
             disable("BLE did not acknowledge disconnect; restart required");
         } else if (!disconnect_submitted_ && now >= next_disconnect_try_) {
@@ -585,7 +601,7 @@ void UpdateController::loop(uint64_t now) {
             next_disconnect_try_ = now + 1000;
         }
     }
-    if (disabled_ || active_job_id_ || pairing_active()) return;
+    if (disabled_ || busy()) return;
     for (size_t i = 0; i < queue_.size(); ++i) {
         UpdateJob *job = queue_.at(i);
         if (job->phase() == UpdatePhase::Checking && checking_until_[i] && now >= checking_until_[i]) {
@@ -604,6 +620,8 @@ void UpdateController::loop(uint64_t now) {
         }
         if (job->phase() == UpdatePhase::Waiting || job->phase() == UpdatePhase::Checking) { start(*job, now); return; }
     }
+    if (now >= cooldown_until_) for (size_t i = 0; i < UPDATE_SNAPSHOT_MAX_ASSOCIATIONS; ++i)
+        if (motion_[i].queued) { motion_start(i, now); return; }
 }
 
 bool UpdateController::snapshot(UpdateControllerSnapshot &out) const {
@@ -621,6 +639,7 @@ bool UpdateController::snapshot(UpdateControllerSnapshot &out) const {
     out.staging_available = storage_ && storage_->staged_release();
     out.disabled = disabled_;
     out.disconnecting = await_ == Await::Disconnected;
+    std::memcpy(out.motion, motion_, sizeof(motion_));
     std::memcpy(out.error, error_, sizeof(error_));
     out.pairing.phase = pairing_phase_;
     out.pairing.association = pairing_association_;

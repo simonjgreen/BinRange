@@ -160,6 +160,7 @@ int main() {
     br_motion_state motion;
     br_motion_init(&motion, &tuning, k_uptime_get());
     bool sensor_ok = br_power_sensors_configure(&tuning) == 0;
+    br_power_config_applied();
     // Exercise this candidate's wake/restore path before its local trial gate.
     sleep_radio();
     k_msleep(10);
@@ -172,6 +173,7 @@ int main() {
         if (br_power_take_config(&tuning)) {
             br_motion_reconfigure(&motion, &tuning, now);
             sensor_ok = br_power_sensors_configure(&tuning) == 0;
+            br_power_config_applied();
         }
         if (now >= sensor_check_at) {
             bool was_ok = sensor_ok;

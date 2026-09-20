@@ -2,6 +2,8 @@
 
 #include <cstdio>
 #include <esp_timer.h>
+#include <esp_heap_caps.h>
+#include <new>
 #include "publisher.h"
 #include "update_ble.h"
 #include "update_store.h"
@@ -19,10 +21,10 @@ class Store final : public UpdateControllerStorage {
     size_t capacity() const override { return update_store().capacity(); }
 };
 Store store;
-UpdateController &controller() {
-    static UpdateController instance(&store, &update_ble_transport());
-    return instance;
-}
+// This bounded management state is too large for the ESP32 static DRAM window.
+// The WROVER's PSRAM is already required for firmware staging. Allocation is
+// main-loop owned; the BLE worker only receives copied transport commands.
+UpdateController *controller = nullptr;
 bool begun = false, initialized = false, staging = false;
 UpdateControllerSnapshot snapshot;
 bool adopted(uint16_t tag) {
@@ -35,19 +37,27 @@ bool available() { return initialized && update_ble_ready(); }
 void tag_updater_begin() {
     if (begun) return;
     begun = true;
-    initialized = controller().begin(now_ms());
+    void *memory = heap_caps_malloc(sizeof(UpdateController), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!memory) return; // fail closed; snapshot reports the reason below
+    controller = new (memory) UpdateController(&store, &update_ble_transport());
+    initialized = controller->begin(now_ms());
     if (initialized) update_ble_begin(store.snapshot().association_count != 0);
 }
 
 void tag_updater_loop() {
     // Always drain disconnect ACKs after initialization. In particular, a
     // latched worker fault must not strand a safely quiesced stage buffer.
-    if (initialized && !staging && (update_ble_ready() || controller().busy()))
-        controller().loop(now_ms());
+    if (initialized && !staging && (update_ble_ready() || controller->busy()))
+        controller->loop(now_ms());
 }
 
 const UpdateControllerSnapshot &tag_updater_snapshot() {
-    controller().snapshot(snapshot);
+    if (controller) controller->snapshot(snapshot);
+    else {
+        snapshot = {};
+        snapshot.disabled = true;
+        std::snprintf(snapshot.error, sizeof(snapshot.error), "Tag controller unavailable; PSRAM allocation required");
+    }
     if (!snapshot.disabled && !available()) {
         snapshot.disabled = true;
         const char *reason = update_ble_fault() == UpdateBleFault::None
@@ -61,13 +71,13 @@ const UpdateControllerSnapshot &tag_updater_snapshot() {
 }
 const UpdateRelease *tag_updater_release() { return store.staged_release(); }
 uint32_t tag_updater_restart_count() { return store.snapshot().restart_count; }
-bool tag_updater_busy() { return staging || controller().busy(); }
+bool tag_updater_busy() { return staging || (controller && controller->busy()); }
 UpdateQueueResult tag_updater_pair(const UpdateAssociation &association, uint32_t pin) {
     UpdateQueueResult result = UpdateQueueResult::Error;
     if (available()) {
         if (staging) result = UpdateQueueResult::Conflict;
         else if (!adopted(association.target.tag)) result = UpdateQueueResult::Invalid;
-        else result = controller().commission(association, pin, now_ms());
+        else result = controller->commission(association, pin, now_ms());
     }
     volatile uint32_t *secret = &pin; *secret = 0;
     return result;
@@ -77,11 +87,20 @@ UpdateQueueResult tag_updater_queue(uint16_t tag, uint32_t *id) {
     if (!available()) return UpdateQueueResult::Error;
     if (staging) return UpdateQueueResult::Conflict;
     if (!adopted(tag)) return UpdateQueueResult::Invalid;
-    return controller().queue(tag, id, now_ms());
+    return controller->queue(tag, id, now_ms());
 }
-bool tag_updater_cancel(uint32_t id) { return initialized && controller().cancel(id, now_ms()); }
+bool tag_updater_cancel(uint32_t id) { return initialized && controller->cancel(id, now_ms()); }
 bool tag_updater_retry(uint32_t id) {
-    return available() && !staging && controller().retry(id, now_ms());
+    return available() && !staging && controller->retry(id, now_ms());
+}
+UpdateQueueResult tag_updater_motion(uint16_t tag, uint32_t idle_ms, uint32_t moving_ms) {
+    if (!available()) return UpdateQueueResult::Error;
+    if (staging) return UpdateQueueResult::Conflict;
+    if (!adopted(tag)) return UpdateQueueResult::Invalid;
+    return controller->motion_request(tag, idle_ms, moving_ms, now_ms());
+}
+void tag_updater_motion_forget(uint16_t tag) {
+    if (controller) controller->motion_forget(tag, now_ms());
 }
 UpdateQueueResult tag_updater_stage_begin(const UpdateRelease &release) {
     if (!available() || tag_updater_snapshot().disabled) return UpdateQueueResult::Error;

@@ -9,6 +9,7 @@
 #include "core/tagpayload.h"
 #include "core/version.h"
 #include "update_mqtt.h"
+#include "motion_mqtt.h"
 #include <WiFi.h>
 #include <math.h>
 #include <time.h>
@@ -57,6 +58,7 @@ static void publish_discovery(uint16_t addr) {
 // An empty retained payload is how Home Assistant is told to delete an entity.
 static void remove_discovery(uint16_t addr) {
     update_mqtt_forget(addr);
+    motion_mqtt_forget(addr);
     char tag[8], object_id[96], topic[160];
     tag_id_to_hex(tag, sizeof(tag), addr);
     for (size_t i = 0; i < TAG_ENTITY_COUNT; i++) {
@@ -180,6 +182,7 @@ static void handle_command(const char *topic, const char *payload) {
 }
 
 void publisher_on_message(const char *topic, const char *payload) {
+    if (motion_mqtt_message(topic, payload)) return;
     uint16_t addr;
     if (parse_tag_config_topic(topic, &addr)) {
         if (!payload || !payload[0]) {   // empty retained payload = forget

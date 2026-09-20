@@ -29,7 +29,7 @@ success rate from received FINALs. Local tag misses are useful but different.
 
 ## Motion and power
 
-Current tag candidate 0.2.5 demonstrated:
+The 0.2.5 motion baseline demonstrated:
 
 - Actual accelerometer-triggered movement, five-second reports and wake-episode
   increment, followed by a received stationary/settled report.
@@ -46,6 +46,12 @@ curve is provisional, not a calibrated fuel gauge.
 
 Use unique MQTT observer client IDs and detect observer disconnects; a recorder
 losing its own connection can otherwise be mistaken for tag silence.
+
+An isolated 0.2.6 development-tag test changed intervals through Home Assistant,
+MQTT and the bonded anchor: observed report spacing was about 60.03 s stationary
+and 2.02 s moving. The saved settings survived a tag restart. Original tuning was
+restored and read back; temporary HA entities and the test dashboard were removed
+with existing dashboard configurations unchanged.
 
 ## Integration and recovery
 
@@ -69,9 +75,33 @@ Signed tag update/recovery checks included:
 | Anchor restart before trial | Same target/release returned NeedsRelease and resumed after matching restaging |
 | Anchor-driven updates | Exact active image hash and local confirmation matched MQTT/HA without re-pairing |
 
-One successful current-image update required a short trusted-jig maintenance
-window before delivery. It is not proof of reliable unattended slow-advertising
-OTA. Retain a tested SWD/laptop recovery path.
+An isolated WROVER/development-tag journey also exercised the anchor's legacy
+and authenticated HTTP OTA routes. Its BLE identity and tag association survived
+the authenticated update. After one-time test commissioning, the debug connection
+was closed and the local window/cooldown expired before an anchor-driven signed
+0.2.5-to-0.2.6 update. The anchor eventually verified the exact active hash and
+local confirmation without further jig assistance.
+
+That run's first upload request received no reply within the normal 10 s budget.
+Bounded recovery completed the transfer on its third connection; a remote operator
+retry was then needed for post-reboot verification because the connection budget
+was exhausted. A separate 30 s request-budget experiment completed automatically
+with two connection attempts, including verification after reboot. Its first
+acknowledgement took less than 6 s, so it did not establish the
+original timeout's cause or justify changing production deadlines. Test builds
+used isolated radio/MQTT identifiers and a third bond slot to preserve the two
+original test-tag associations. This proves the wireless upgrade path, not
+repeatable unattended reliability. Retain a tested SWD/laptop recovery path.
+
+A subsequent six-tag installed rollout upgraded the production anchor to 0.2.4
+and all six tags to signed 0.2.6 entirely OTA using their existing bonds. Every
+tag’s exact active image and local confirmation were verified, healthy range
+reports resumed, and HA read back the existing 600 s stationary / 5 s moving
+settings. Firmware jobs completed within their bounded connection budgets.
+Several separate settings reads required remote retries, including one after a
+longer quiet interval. The anchor identity and associations survived its single
+restart; no production jig access or re-pairing was needed. This is one successful
+installed rollout, not proof of unattended connection reliability.
 
 ## Resolved multi-peer pairing defect
 
@@ -96,7 +126,8 @@ without a restart or bond eviction. This does not explain every connection miss.
   can invalidate each other's login. Cache the helper challenge and avoid
   competing polling. Never replay mutation POSTs after uncertain responses.
 - Maintained-tag ranging pauses during bulk transfer. Background UWB/MQTT
-  continued in bench tests; full fleet coexistence remains a field gate.
+  continued during bench tests and one sequential six-tag installed rollout;
+  sustained fleet coexistence remains a field gate.
 
 The public [roadmap](current-work.md) lists acceptance; the
 [update contract](tag-updates.md) owns safety invariants.

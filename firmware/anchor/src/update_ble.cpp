@@ -490,7 +490,8 @@ void Worker::command(UpdateTransportCommand &cmd) {
             fail(UpdateTransportFailure::Identity); return;
         }
         ble_gap_disc_params params{};
-        params.passive = 1; params.filter_duplicates = 1; params.itvl = 160; params.window = 80;
+        // Cover the whole bounded scan: idle tags advertise only every ~2 seconds.
+        params.passive = 1; params.filter_duplicates = 1; params.itvl = 160; params.window = 160;
         if (ble_gap_disc(own_type_, kScanMs, &params, gap, &gap_) != 0)
             fail(UpdateTransportFailure::Transient);
         return;
@@ -671,7 +672,8 @@ void Worker::handle(const Note &n) {
         step_ = Step::Connecting;
         deadline_ = now_ms() + 15000;
         ble_gap_conn_params params{};
-        params.scan_itvl = 160; params.scan_window = 80;
+        // Keep the same coverage while initiating a connection to a slow advertiser.
+        params.scan_itvl = 160; params.scan_window = 160;
         params.itvl_min = 12; params.itvl_max = 24; params.supervision_timeout = 400;
         if (ble_gap_connect(own_type_, &gap_.address, 15000, &params, gap, &gap_) != 0)
             fail(UpdateTransportFailure::Transient);

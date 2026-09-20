@@ -28,7 +28,7 @@ chronological build log.
 | Coverage / location | Each tag checked at storage and collection, while moving and after settling; distances independently measured; threshold has useful margin |
 | Battery / motion | Meter-checked voltage, representative whole-tag idle/active current, persisted tuning and no excessive nuisance wakes |
 | Reliability | Real fleet activity, missed reports, sensor faults and anchor/broker outages have truthful status and bounded recovery |
-| Maintenance | Bonded slow-advertising OTA without jig assistance, exact active hash/local confirmation, representative post-trial interruptions and safe uncertain outcomes |
+| Maintenance | Repeatable bonded slow-advertising OTA without jig assistance or operator retries, exact active hash/local confirmation, representative post-trial interruptions and safe uncertain outcomes |
 | HA reminders | Real provider calendar/category mapping, stale-safe put-out/return policy, deduplication and explicitly selected notification target |
 | Handover | Reproducible signed release, recovery/key backup, current instructions and sanitized evidence |
 

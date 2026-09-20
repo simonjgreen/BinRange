@@ -13,6 +13,8 @@ bool wire_command(SmpCommand command, WireCommand& wire) {
     case SmpCommand::Upload: wire = {2, 1, 1}; return true;
     case SmpCommand::Trial: wire = {2, 64, 1}; return true;
     case SmpCommand::Reset: wire = {2, 0, 5}; return true;
+    case SmpCommand::ConfigRead: wire = {0, 64, 2}; return true;
+    case SmpCommand::ConfigWrite: wire = {2, 64, 2}; return true;
     }
     return false;
 }
@@ -42,7 +44,7 @@ bool smp_encode_request(SmpCommand command, uint8_t sequence,
                         size_t capacity, size_t& written) {
     written = 0;
     WireCommand wire{};
-    if (!wire_command(command, wire) || !out ||
+    if (!wire_command(command, wire) || !out || command == SmpCommand::ConfigWrite ||
         (command == SmpCommand::Upload) != (upload != nullptr)) return false;
     if (upload && (upload->total < 32 || upload->total > MaxImage ||
         !upload->data || upload->size == 0 || upload->size > 256 ||
@@ -67,6 +69,37 @@ bool smp_encode_request(SmpCommand command, uint8_t sequence,
     e.bytes[5] = static_cast<uint8_t>(wire.group);
     e.bytes[6] = sequence;
     e.bytes[7] = wire.id;
+    std::memcpy(out, e.bytes, e.size);
+    written = e.size;
+    return true;
+}
+
+bool smp_motion_valid(const SmpMotionConfig &c) {
+    return c.moving_ms >= 1000 && c.moving_ms <= 60000 &&
+        c.idle_ms >= 60000 && c.idle_ms <= 3600000 && c.idle_ms >= c.moving_ms &&
+        c.quiet_ms >= 5000 && c.quiet_ms <= 300000 &&
+        c.threshold_mg >= 32 && c.threshold_mg <= 1000 &&
+        c.duration_samples >= 1 && c.duration_samples <= 127;
+}
+bool smp_motion_equal(const SmpMotionConfig &a, const SmpMotionConfig &b) {
+    return a.moving_ms == b.moving_ms && a.idle_ms == b.idle_ms &&
+        a.quiet_ms == b.quiet_ms && a.threshold_mg == b.threshold_mg &&
+        a.duration_samples == b.duration_samples;
+}
+bool smp_encode_config(uint8_t sequence, const SmpMotionConfig &c,
+                       uint8_t *out, size_t capacity, size_t &written) {
+    written = 0;
+    if (!out || !smp_motion_valid(c)) return false;
+    Encoder e;
+    e.number(5, 5);
+    e.key("moving_ms"); e.number(0, c.moving_ms);
+    e.key("idle_ms"); e.number(0, c.idle_ms);
+    e.key("quiet_ms"); e.number(0, c.quiet_ms);
+    e.key("threshold_mg"); e.number(0, c.threshold_mg);
+    e.key("duration_samples"); e.number(0, c.duration_samples);
+    if (e.size > capacity) return false;
+    e.bytes[0] = 2; e.bytes[3] = static_cast<uint8_t>(e.size - 8);
+    e.bytes[5] = 64; e.bytes[6] = sequence; e.bytes[7] = 2;
     std::memcpy(out, e.bytes, e.size);
     written = e.size;
     return true;
@@ -313,16 +346,21 @@ bool decode_reply(SmpCommand command, const uint8_t* bytes, size_t size, SmpRepl
     CborContainer map{};
     if (!c.container(5, map)) return false;
     static const char* const tag_keys[] = {"rc", "err", "id", "version", "tag", "uptime_ms",
-                                          "reset_reason", "confirmed", "maintenance", "radio_ok", "ble_ok"};
+                                          "reset_reason", "confirmed", "maintenance", "radio_ok", "ble_ok",
+                                          "config_pending", "sensor_error", "config_schema"};
+    static const char* const config_keys[] = {"rc", "err", "moving_ms", "idle_ms", "quiet_ms",
+                                             "threshold_mg", "duration_samples"};
     static const char* const image_keys[] = {"rc", "err", "images"};
     static const char* const upload_keys[] = {"rc", "err", "off"};
     const char* const* keys = tag_keys;
     size_t key_count = 2;
-    if (command == SmpCommand::TagStatus) key_count = 11;
+    const bool config = command == SmpCommand::ConfigRead || command == SmpCommand::ConfigWrite;
+    if (command == SmpCommand::TagStatus) key_count = 14;
+    else if (config) { keys = config_keys; key_count = 7; }
     else if (command == SmpCommand::ImageList) { keys = image_keys; key_count = 3; }
     else if (command == SmpCommand::Upload) { keys = upload_keys; key_count = 3; }
     uint32_t seen = 0;
-    uint32_t rc = 0;
+    uint32_t rc = 0, config_schema = 0;
     while (c.next(map)) {
         int key;
         if (!c.key(keys, key_count, seen, key)) return false;
@@ -331,7 +369,16 @@ bool decode_reply(SmpCommand command, const uint8_t* bytes, size_t size, SmpRepl
         else if (key == -1) { if (!c.skip()) return false; }
         else if (command == SmpCommand::ImageList) { if (!parse_images(c, reply)) return false; }
         else if (command == SmpCommand::Upload) { if (!c.number(reply.offset)) return false; }
-        else {
+        else if (config) {
+            switch (key) {
+            case 2: if (!c.number(reply.config.moving_ms)) return false; break;
+            case 3: if (!c.number(reply.config.idle_ms)) return false; break;
+            case 4: if (!c.number(reply.config.quiet_ms)) return false; break;
+            case 5: if (!c.number(reply.config.threshold_mg)) return false; break;
+            case 6: if (!c.number(reply.config.duration_samples)) return false; break;
+            default: return false;
+            }
+        } else {
             switch (key) {
             case 2: if (!c.string(reply.tag.id, sizeof(reply.tag.id), true)) return false; break;
             case 3: if (!c.string(reply.tag.version, sizeof(reply.tag.version))) return false; break;
@@ -342,6 +389,15 @@ bool decode_reply(SmpCommand command, const uint8_t* bytes, size_t size, SmpRepl
             case 8: if (!c.boolean(reply.tag.maintenance)) return false; break;
             case 9: if (!c.boolean(reply.tag.radio_ok)) return false; break;
             case 10: if (!c.boolean(reply.tag.ble_ok)) return false; break;
+            case 11: if (!c.boolean(reply.tag.config_pending)) return false; break;
+            case 13: if (!c.number(config_schema)) return false; break;
+            case 12: {
+                CborHead h{};
+                if (!c.head(h) || h.indefinite || h.major > 1 || h.value > INT32_MAX) return false;
+                reply.tag.sensor_error = h.major == 0 ? static_cast<int32_t>(h.value) :
+                    -1 - static_cast<int32_t>(h.value);
+                break;
+            }
             default: return false;
             }
         }
@@ -353,7 +409,11 @@ bool decode_reply(SmpCommand command, const uint8_t* bytes, size_t size, SmpRepl
         return true;
     }
     reply.outcome = SmpOutcome::Ok;
-    if (command == SmpCommand::TagStatus) return (seen & 0x7fc) == 0x7fc;
+    if (command == SmpCommand::TagStatus) {
+        reply.tag.config_status_known = (seen & 0x3800) == 0x3800 && config_schema == 1;
+        return (seen & 0x7fc) == 0x7fc;
+    }
+    if (config) return (seen & 0x7c) == 0x7c && smp_motion_valid(reply.config);
     if (command == SmpCommand::ImageList || command == SmpCommand::Upload) return (seen & 4) != 0;
     return true;
 }
