@@ -1,0 +1,252 @@
+# Reusable example: replace every replace_me_* placeholder before enabling.
+# Setup, category mapping, notification group and helper requirements: README.md
+# Single automation object for HA's automation YAML editor. For automations.yaml,
+# add this object as one list item. Times use HA's configured local timezone.
+# Location entities must report Home / Out / unknown. Freshness is OFF when fresh.
+# Bin slugs below form sensor.<slug>_location and
+# binary_sensor.<slug>_range_freshness_a; adapt the templates if yours differ.
+# Generic provider categories and six bin slots are examples, not fixed hardware.
+
+id: binrange_collection_reminders
+alias: BinRange collection and return reminders
+description: 'Configured Home Assistant local time: put out 18:00, urgent 21:00, urgent 06:00; bring
+  in 18:00 the day AFTER collection. Fresh Home/Out only. One grouped message to the configured recipients
+  per phase/cycle. 00:05 and HA startup refresh collection history without notifying. Urgency is in
+  the title/message; respects phone silent/Do Not Disturb settings.'
+triggers:
+- trigger: time
+  at: 00:05:00
+  id: snapshot
+- trigger: time
+  at: 06:00:00
+  id: morning
+- trigger: time
+  at: '18:00:00'
+  id: evening
+- trigger: time
+  at: '21:00:00'
+  id: late
+- trigger: homeassistant
+  event: start
+  id: snapshot
+conditions: []
+mode: single
+trace:
+  stored_traces: 30
+actions:
+- alias: If this is not a scheduled run or HA startup, stop
+  if:
+  - alias: No recognised scheduled trigger (manual Run does not send reminders)
+    condition: template
+    value_template: >-
+      {{ not ( trigger is defined and trigger.platform in ['time','homeassistant'] and trigger.id
+      in ['snapshot','morning','evening','late'] ) }}
+  then:
+  - alias: 'Stop this run: No recognised scheduled trigger (manual Run does not send reminders)'
+    stop: No recognised scheduled trigger (manual Run does not send reminders)
+- alias: If saved collection or reminder history is unavailable, stop
+  if:
+  - alias: A required history helper is unavailable
+    condition: template
+    value_template: >-
+      {{ not ( states('input_text.replace_me_collection_dates') not in ['unknown','unavailable'] and
+      states('input_text.replace_me_reminder_phases') not in ['unknown','unavailable'] ) }}
+  then:
+  - alias: 'Stop this run: A required history helper is unavailable'
+    stop: A required history helper is unavailable
+- alias: Prepare bin names, local dates and reminder phases for this run
+  variables:
+    bins:
+    - slug: replace_me_bin_1
+      name: Bin 1
+      category: waste
+    - slug: replace_me_bin_2
+      name: Bin 2
+      category: recycling
+    - slug: replace_me_bin_3
+      name: Bin 3
+      category: recycling
+    - slug: replace_me_bin_4
+      name: Bin 4
+      category: food
+    - slug: replace_me_bin_5
+      name: Bin 5
+      category: garden
+    - slug: replace_me_bin_6
+      name: Bin 6
+      category: glass
+    calendar_entity: calendar.replace_me_collection_schedule
+    today: '{{ now().date().isoformat() }}'
+    oldest: '{{ (now().date() - timedelta(days=1)).isoformat() }}'
+    collection_date: '{{ now().date().isoformat() }}'
+    old_dates: '{{ states(''input_text.replace_me_collection_dates'') | from_json(none) }}'
+    sent_phases: '{{ states(''input_text.replace_me_reminder_phases'') | from_json(none) }}'
+    phases: >-
+      {{ ['return','evening'] if trigger.id == 'evening' else [trigger.id] if trigger.id in ['late','morning']
+      else [] }}
+- alias: If saved history cannot be read safely, stop
+  if:
+  - alias: Saved collection or reminder history is not valid
+    condition: template
+    value_template: '{{ not ( old_dates is mapping and sent_phases is mapping ) }}'
+  then:
+  - alias: 'Stop this run: Saved collection or reminder history is not valid'
+    stop: Saved collection or reminder history is not valid
+- alias: Fetch today’s collections from the waste calendar
+  action: calendar.get_events
+  target:
+    entity_id: calendar.replace_me_collection_schedule
+  data:
+    start_date_time: '{{ collection_date ~ '' 00:00:00'' }}'
+    end_date_time: '{{ (strptime(collection_date, ''%Y-%m-%d'') + timedelta(days=1)).strftime(''%Y-%m-%d'')
+      ~ '' 00:00:00'' }}'
+  response_variable: today_calendar
+- alias: Read today’s calendar events
+  variables:
+    events: '{{ today_calendar[calendar_entity][''events''] }}'
+- alias: Identify which bin types are scheduled today
+  variables:
+    categories: |
+      {% set ns = namespace(items=[]) %}
+      {% for event in events %}
+        {% if (event.start | string)[:10] == collection_date %}
+          {% for part in event.summary.split(',') %}
+            {% set category = part | trim | lower %}
+            {% if category in ['waste','recycling','food','garden','glass'] and category not in ns.items %}
+              {% set ns.items = ns.items + [category] %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.items | to_json }}
+- alias: Refresh today’s collection record and retain yesterday’s
+  variables:
+    dates: |
+      {% set ns = namespace(items=[]) %}
+      {% for date, cats in old_dates.items() %}
+        {% if oldest <= date < today %}
+          {% set ns.items = ns.items + [(date, cats)] %}
+        {% endif %}
+      {% endfor %}
+      {% if categories | length > 0 %}
+        {% set ns.items = ns.items + [(today, categories)] %}
+      {% endif %}
+      {{ dict(ns.items) | to_json }}
+- alias: If the collection record changed, save it
+  if:
+  - alias: The collection record has changed
+    condition: template
+    value_template: '{{ dates != old_dates }}'
+  then:
+  - alias: Save collection dates for tomorrow’s bring-in check
+    action: input_text.set_value
+    target:
+      entity_id: input_text.replace_me_collection_dates
+    data:
+      value: '{{ dates | to_json }}'
+- alias: Check each reminder phase due now (none on history-only runs)
+  repeat:
+    for_each: '{{ phases }}'
+    sequence:
+    - alias: Choose this phase’s collection date and required Home/Out state
+      variables:
+        phase: '{{ repeat.item }}'
+        collection_date: >-
+          {{ (now().date() + timedelta(days=(-1 if repeat.item == 'return' else 0 if repeat.item ==
+          'morning' else 1))).isoformat() }}
+        expected_location: '{{ ''Out'' if repeat.item == ''return'' else ''Home'' }}'
+    - alias: If this is a bring-in reminder, use saved history; otherwise use the calendar
+      if:
+      - alias: This is the bring-in reminder
+        condition: template
+        value_template: '{{ phase == ''return'' }}'
+      then:
+      - alias: Look up yesterday’s scheduled bin types
+        variables:
+          categories: |
+            {{ dates.get(collection_date, []) | to_json }}
+      else:
+      - alias: Fetch collections for this reminder’s date
+        action: calendar.get_events
+        target:
+          entity_id: calendar.replace_me_collection_schedule
+        data:
+          start_date_time: '{{ collection_date ~ '' 00:00:00'' }}'
+          end_date_time: '{{ (strptime(collection_date, ''%Y-%m-%d'') + timedelta(days=1)).strftime(''%Y-%m-%d'')
+            ~ '' 00:00:00'' }}'
+        response_variable: phase_calendar
+      - alias: Read the calendar events for this reminder
+        variables:
+          events: '{{ phase_calendar[calendar_entity][''events''] }}'
+      - alias: Identify bin types due on this collection date
+        variables:
+          categories: |
+            {% set ns = namespace(items=[]) %}
+            {% for event in events %}
+              {% if (event.start | string)[:10] == collection_date %}
+                {% for part in event.summary.split(',') %}
+                  {% set category = part | trim | lower %}
+                  {% if category in ['waste','recycling','food','garden','glass'] and category not in ns.items %}
+                    {% set ns.items = ns.items + [category] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.items | to_json }}
+    - alias: Read fresh bin locations and the last attempted reminder phases
+      variables:
+        locations: |-
+          {% set ns = namespace(items=[]) %}
+          {% for bin in bins %}
+            {% set location = states('sensor.' ~ bin.slug ~ '_location') %}
+            {% set fresh = is_state('binary_sensor.' ~ bin.slug ~ '_range_freshness_a', 'off') %}
+            {% set ns.items = ns.items + [(bin.slug, location if fresh else 'unknown')] %}
+          {% endfor %}
+          {{ dict(ns.items) }}
+        sent_phases: '{{ states(''input_text.replace_me_reminder_phases'') | from_json(none) }}'
+    - alias: Select due bins still Home for put-out, or still Out for bring-in
+      variables:
+        eligible: |
+          {% set ns = namespace(items=[]) %}
+          {% for bin in bins %}
+            {% if bin.category in categories and locations.get(bin.slug) == expected_location %}
+              {% set ns.items = ns.items + [bin.name] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.items | to_json }}
+    - alias: If bins need attention and this phase has not been attempted, notify both phones
+      if:
+      - alias: At least one due bin still needs attention
+        condition: template
+        value_template: '{{ eligible | length > 0 }}'
+      - alias: Saved reminder history is readable
+        condition: template
+        value_template: '{{ sent_phases is mapping }}'
+      - alias: This phase has not been attempted for this collection date
+        condition: template
+        value_template: '{{ sent_phases.get(phase) != collection_date }}'
+      then:
+      - alias: Record this reminder phase before sending to prevent duplicates
+        action: input_text.set_value
+        target:
+          entity_id: input_text.replace_me_reminder_phases
+        data:
+          value: '{{ dict(sent_phases, **{phase:collection_date}) | to_json }}'
+      - alias: Send one grouped bin reminder to the configured recipients
+        action: notify.send_message
+        target:
+          entity_id: notify.replace_me_phone_group
+        data:
+          title: >-
+            {{ 'Bring the bins in' if phase == 'return' else 'URGENT: bins still need putting out'
+            if phase in ['late','morning'] else 'Bins out tomorrow' }}
+          message: |-
+            {% if phase == 'return' %}
+            {{ eligible | join(', ') }} still {{ 'is' if eligible | length == 1 else 'are' }} out after yesterday's scheduled collection. Please bring {{ 'it' if eligible | length == 1 else 'them' }} back in.
+            {% elif phase == 'morning' %}
+            Collection is today. {{ eligible | join(', ') }} still {{ 'is' if eligible | length == 1 else 'are' }} at home. Please put {{ 'it' if eligible | length == 1 else 'them' }} out now.
+            {% elif phase == 'late' %}
+            Collection is tomorrow. {{ eligible | join(', ') }} still {{ 'is' if eligible | length == 1 else 'are' }} at home. Please put {{ 'it' if eligible | length == 1 else 'them' }} out tonight.
+            {% else %}
+            Please put {{ eligible | join(', ') }} out for tomorrow's collection.
+            {% endif %}

@@ -93,9 +93,11 @@ Map provider categories to your named tags. A category may cover more than one
 bin. Keep provider entity IDs, mappings, notification targets and household times
 in local HA configuration.
 
-Position-aware reminders remain under development. The intended policy combines
-due collections with confident Home/Out state, groups reminders, avoids duplicate
-phases, handles changed schedules and supports put-out plus return reminders.
+The [collection reminder example](../examples/home-assistant/README.md) includes
+placeholder YAML combining due collections with confident Home/Out state. It
+groups reminders, prevents duplicate phase attempts, handles changed schedules
+and supports put-out plus return reminders. Configure its entity IDs, provider
+categories, persistent Text helpers and phone notification group before enabling.
 Unknown/stale data must not accuse someone of forgetting a bin. Elapsed time
 alone proves neither collection nor return. Deliberately replace overlapping
 old automations rather than installing duplicates.

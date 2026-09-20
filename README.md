@@ -11,7 +11,8 @@ Collection scheduling for the Home Assistant automations leverages the brilliant
 [Waste Collection Schedule](https://github.com/mampfes/hacs_waste_collection_schedule)
 integration, available through [HACS](https://hacs.xyz/). It supplies the collection
 calendar; BinRange supplies the bin's movement, distance and health.
-The position-aware put-out/return reminder policy is still being completed.
+A [configurable reminder example](examples/home-assistant/README.md) combines the
+calendar with fresh Home/Out states for put-out and bring-in notifications.
 
 ## See it working
 
@@ -87,6 +88,7 @@ and use your own credentials, tag identities and signing key.
 | [Getting started](docs/getting-started.md) | Prerequisites, setup sequence and local configuration |
 | [Hardware](docs/hardware.md) | Components, wiring, battery and motion constraints |
 | [MQTT / Home Assistant](docs/mqtt.md) | Topics, adoption, freshness and scheduling integration |
+| [Collection reminder example](examples/home-assistant/README.md) | Placeholder YAML, phone-group setup and put-out/return reminder behavior |
 | [Signed tag build and recovery](firmware/k4w-tag/BUILD.md) | SDK, partitions, signing and safe installation |
 | [BLE update contract](docs/tag-updates.md) | Authentication, persistence and recovery invariants |
 | [Nesso SWD probe](firmware/nesso-probe/README.md) | Optional programmer build and wiring |
