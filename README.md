@@ -14,6 +14,33 @@ calendar; BinRange supplies the bin's movement, distance and health.
 A [configurable reminder example](examples/home-assistant/README.md) combines the
 calendar with fresh Home/Out states for put-out and bring-in notifications.
 
+## The hardware
+
+The anchor has a custom printable case; the battery tags attach to the bins.
+These renders show the accepted **v7.1.0 WROVER case**, using the actual print
+meshes. Colours and surface finish are illustrative.
+
+| Closed case | Inside the case |
+| --- | --- |
+| ![Studio render of the assembled WROVER case, with a petrol-blue base and a warm light lid](docs/images/wrover-case-v7.1.0-assembled.jpg) | ![Studio render of the separate base and lid showing the PCB locating cones, spring supports and ventilation slots](docs/images/wrover-case-v7.1.0-open.jpg) |
+
+[Case design, version history and print downloads](hardware/wrover-case/README.md).
+The separate v7.2.0 DIN rail variant remains experimental.
+
+Installed KKM K4W tags, shown on three different bins:
+
+| Under a wheelie-bin rim | On a food caddy | Under a brown-bin rim |
+| --- | --- | --- |
+| ![K4W tag mounted beneath the rim of a green wheelie bin](docs/images/k4w-tag-installed-green-bin.jpg) | ![K4W tag attached to a green food caddy near its carrying handle](docs/images/k4w-tag-installed-food-caddy.jpg) | ![K4W tag mounted below the rear rim of a brown wheelie bin](docs/images/k4w-tag-installed-brown-bin.jpg) |
+
+| Anchor board | The installation |
+| --- | --- |
+| ![Makerfabs ESP32-WROVER anchor board with USB connected, DW3000 radio module and UWB antenna visible](docs/images/makerfabs-wrover-dw3000-board.jpg) | ![A row of household bins in the outdoor installation](docs/images/tagged-bins-installation.jpg) |
+
+*Real installation and development-board photos. Device QR codes and identifiers
+are obscured; published copies are resized and stripped of metadata. Mounting
+photos document the prototype, not a weatherproofing or coverage guarantee.*
+
 ## See it working
 
 ![UWB outdoor walk: distance rises and falls, with first-path, RSSI and range-spread traces](docs/images/uwb-walk-test.png)
@@ -87,6 +114,7 @@ and use your own credentials, tag identities and signing key.
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Prerequisites, setup sequence and local configuration |
 | [Hardware](docs/hardware.md) | Components, wiring, battery and motion constraints |
+| [Printable anchor case](hardware/wrover-case/README.md) | Case renders, version status, source and print files |
 | [MQTT / Home Assistant](docs/mqtt.md) | Topics, adoption, freshness and scheduling integration |
 | [Collection reminder example](examples/home-assistant/README.md) | Placeholder YAML, phone-group setup and put-out/return reminder behavior |
 | [Signed tag build and recovery](firmware/k4w-tag/BUILD.md) | SDK, partitions, signing and safe installation |
