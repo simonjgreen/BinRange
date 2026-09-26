@@ -1,0 +1,112 @@
+{
+  "board_seating": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "closed": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "rigid_insertion": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "components": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "catch_left": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "catch_right": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "release": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "release_board": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "allowed_play": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "locating_x": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "locating_y": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "din_seated": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "din_slide_path": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "din_end_stop": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "din_detent": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "din_rail_seated": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "din_hook_fixed": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "din_hook_latch": {
+    "passed": true,
+    "expected": "solid",
+    "exit_code": 0
+  },
+  "din_latch_path": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "din_latch_free": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "din_tilt_rotate": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  },
+  "din_tilt_unhook": {
+    "passed": true,
+    "expected": "empty",
+    "exit_code": 1
+  }
+}

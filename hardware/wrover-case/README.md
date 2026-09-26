@@ -6,6 +6,15 @@
 
 The user reports v7.0.0 as “really good” and has accepted v7.1.0, with wider locating cones and centred vents, as the working design. No quantified retention, thermal or endurance results have been reported.
 
+| Assembled v7.1.0 | Base and lid interior |
+| --- | --- |
+| ![Assembled WROVER case rendered from the v7.1.0 print meshes](../../docs/images/wrover-case-v7.1.0-assembled.jpg) | ![Open v7.1.0 case showing PCB locating cones and lid springs](../../docs/images/wrover-case-v7.1.0-open.jpg) |
+
+*Renders of the actual STL geometry; colours and surface finish are illustrative.
+The board is omitted to show the case details. [Renderer](tools/render_readme.py).*
+
+**DIN rail candidate: [v7.2.0](versions/v7.2.0/README.md)**, experimental. It is the v7.1.0 base on a dovetail plinth with a separate snap-on TS35 clip. The lid is unchanged. [Base](versions/v7.2.0/exports/wrover-case-v7.2.0-base.stl) · [DIN clip](versions/v7.2.0/exports/wrover-case-v7.2.0-din-clip.stl) · [Print package](releases/wrover-case-v7.2.0.zip)
+
 ## Version history
 
 Old names have been normalised without changing the archived geometry. The historical v5.1 is now v5.1.0, for example.
@@ -20,8 +29,9 @@ Old names have been normalised without changing the archived geometry. The histo
 | [v5.1.0](versions/v5.1.0/README.md) | 1.0 mm hooks | Better retention; still pulls off easily | v5 base |
 | [v5.2.0](versions/v5.2.0/README.md) | 3.0 mm full-wall hooks | **Failed: both roots broke on insertion** | v5 base |
 | [v6.0.0](versions/v6.0.0/README.md) | Torsion-arm catches | CAD checks only; untested, superseded by research direction | v5 base |
-| [v7.0.0](versions/v7.0.0/README.md) | Overlapping shells, four shallow beads | **User-tested: “really good”; two refinements requested** | v7.0.0 / v7.1.0 halves |
-| [v7.1.0](versions/v7.1.0/README.md) | Same closure; 3 mm cone roots, centred vents | **Working design: accepted by user** | v7.0.0 / v7.1.0 halves |
+| [v7.0.0](versions/v7.0.0/README.md) | Overlapping shells, four shallow beads | **User-tested: “really good”; two refinements requested** | v7.0.0 / v7.1.0 / v7.2.0 halves |
+| [v7.1.0](versions/v7.1.0/README.md) | Same closure; 3 mm cone roots, centred vents | **Working design: accepted by user** | v7.0.0 / v7.1.0 / v7.2.0 halves |
+| [v7.2.0](versions/v7.2.0/README.md) | v7.1.0 plus dovetail plinth and snap-on TS35 DIN clip | Experimental: CAD checks only | Any v7 lid; lid unchanged |
 
 ## Folder and naming rules
 

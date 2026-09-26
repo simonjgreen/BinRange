@@ -7,11 +7,13 @@
   "base_family": "v7",
   "compatible_base_versions": [
     "7.0.0",
-    "7.1.0"
+    "7.1.0",
+    "7.2.0"
   ],
   "compatible_lid_versions": [
     "7.0.0",
-    "7.1.0"
+    "7.1.0",
+    "7.2.0"
   ],
   "assets": {
     "base": {

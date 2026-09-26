@@ -1,5 +1,5 @@
 {
-  "next_candidate": null,
+  "next_candidate": "7.2.0",
   "versions": [
     {
       "version": "1.0.0",
@@ -149,11 +149,13 @@
       "base_family": "v7",
       "compatible_base_versions": [
         "7.0.0",
-        "7.1.0"
+        "7.1.0",
+        "7.2.0"
       ],
       "compatible_lid_versions": [
         "7.0.0",
-        "7.1.0"
+        "7.1.0",
+        "7.2.0"
       ],
       "assets": {
         "base": {
@@ -175,11 +177,13 @@
       "base_family": "v7",
       "compatible_base_versions": [
         "7.0.0",
-        "7.1.0"
+        "7.1.0",
+        "7.2.0"
       ],
       "compatible_lid_versions": [
         "7.0.0",
-        "7.1.0"
+        "7.1.0",
+        "7.2.0"
       ],
       "assets": {
         "base": {
@@ -192,6 +196,38 @@
         }
       },
       "accepted_by_user": true
+    },
+    {
+      "version": "7.2.0",
+      "name": "DIN rail mount (plinth + snap-on TS35 clip)",
+      "status": "experimental",
+      "physical_tested": false,
+      "feedback": "v7.1.0 base on a 3 mm dovetail plinth with a separate sprung TS35 clip; lid reused unchanged. CAD checks only.",
+      "base_family": "v7",
+      "compatible_base_versions": [
+        "7.0.0",
+        "7.1.0",
+        "7.2.0"
+      ],
+      "compatible_lid_versions": [
+        "7.0.0",
+        "7.1.0",
+        "7.2.0"
+      ],
+      "assets": {
+        "base": {
+          "file": "exports/wrover-case-v7.2.0-base.stl",
+          "sha256": "a320d221b903802fa0fcc0b0bd19dfdc5d33fd414268fd0fc2cd71c4904abb2f"
+        },
+        "lid": {
+          "file": "exports/wrover-case-v7.2.0-lid.stl",
+          "sha256": "de62fd00dd3c80ebd486372af3ad104a91d016861902a4c0100cf138a9334fd6"
+        },
+        "din_clip": {
+          "file": "exports/wrover-case-v7.2.0-din-clip.stl",
+          "sha256": "14a0565f43431b8e929408d6c99d421a8becbc080863e945ac2cf9a5b3e8b521"
+        }
+      }
     }
   ],
   "working_version": "7.1.0"

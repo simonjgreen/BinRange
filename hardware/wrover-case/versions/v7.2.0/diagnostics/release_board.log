@@ -1,0 +1,10 @@
+ECHO: "v7.2.0 closed case: 86 x 46.6 x 20.6 mm; clip -4 to 63.3 mm along the case, 26 mm along the rail"
+ECHO: "DIN latch travel to clear the rail edge: 1.7 mm"
+ECHO: "Net bead engagement: 0.4; clearance-envelope release: 0.6 mm"
+ECHO: "Nominal retained PCB spring deflection: 0.6"
+Geometries in cache: 38
+Geometry cache size in bytes: 98352
+CGAL Polyhedrons in cache: 11
+CGAL cache size in bytes: 4431152
+Total rendering time: 0:00:00.522
+Current top level object is empty.
