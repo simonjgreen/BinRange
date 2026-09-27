@@ -1,4 +1,6 @@
 # Reusable example: replace every replace_me_* placeholder before enabling.
+# Checked against the installed automation export on 2026-09-27; household
+# calendar, recipient, helper and bin identifiers are replaced with placeholders.
 # Setup, category mapping, notification group and helper requirements: README.md
 # Single automation object for HA's automation YAML editor. For automations.yaml,
 # add this object as one list item. Times use HA's configured local timezone.
@@ -214,7 +216,7 @@ actions:
             {% endif %}
           {% endfor %}
           {{ ns.items | to_json }}
-    - alias: If bins need attention and this phase has not been attempted, notify both phones
+    - alias: If bins need attention and this phase has not been attempted, notify the configured recipients
       if:
       - alias: At least one due bin still needs attention
         condition: template

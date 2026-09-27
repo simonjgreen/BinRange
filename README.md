@@ -14,6 +14,30 @@ calendar; BinRange supplies the bin's movement, distance and health.
 A [configurable reminder example](examples/home-assistant/README.md) combines the
 calendar with fresh Home/Out states for put-out and bring-in notifications.
 
+## Phone reminders
+
+These Home Assistant notifications were sent with sample bin data for the
+documentation. The [automation YAML](examples/home-assistant/collection-reminders.yaml)
+uses placeholders for your calendar, notification group, helpers and bin entities;
+follow the [setup instructions](examples/home-assistant/README.md) before enabling it.
+
+**Put the bins out:** an evening reminder for due bins still at home.
+
+<img src="docs/images/bin-notification-put-out.png" alt="Home Assistant notification: Bins out tomorrow; put General Waste, Recycling 1 and Glass out for collection" width="660">
+
+**Still at home:** an urgent follow-up when the bins have not been put out.
+The screenshot uses illustrative wording; the supplied automation titles this
+reminder “URGENT: bins still need putting out”.
+
+<img src="docs/images/bin-notification-overdue.png" alt="Mock urgent Home Assistant notification: You have still not put the bins out" width="660">
+
+**Bring the bins in — wording mock-up:** this screenshot illustrates an
+emptying-confirmed message. The current automation does **not** detect emptying;
+it sends “Bring the bins in” the evening after the scheduled collection when
+the bins are still out.
+
+<img src="docs/images/bin-notification-bring-in-mockup.png" alt="Mock-up of a future emptying-confirmed notification: The bins have just been emptied; you can now bring them in" width="660">
+
 ## The hardware
 
 The main anchor is now wall mounted in its enclosure, all six bins have tags,
