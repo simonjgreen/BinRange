@@ -103,7 +103,7 @@ The original scheduled automation remains enabled as the fallback, including its
 next-evening bring-in reminder. This package does not change its phase history.
 
 Install this file as a Home Assistant **package**, or create its two Text helpers
-and paste the `automation` list's single object into the automation YAML editor.
+and one Timer helper, then paste the `automation` list's single object into the automation YAML editor.
 For packages, enable your package directory under `homeassistant: packages:` using
 Home Assistant's [package configuration](https://www.home-assistant.io/docs/configuration/packages/).
 Configure it while disabled, then:
@@ -119,6 +119,8 @@ Configure it while disabled, then:
    Leave `initial` unset so HA restores their history. Do not reset them on startup,
    reload, firmware update or reconnect. Missing or malformed history stops the
    automation without overwriting it.
+   Create `timer.binrange_tip_flush` with restore enabled. Its countdown is only
+   active while a grouping deadline or unresolved batch expiry needs attention.
 3. Match the fresh-location and motion-sensor-fault entity templates to your
    installation. As in the reminder, freshness is `off` when fresh. Sensor fault
    must be `off`; unavailable or unknown health is excluded. The example uses
@@ -134,23 +136,30 @@ event may qualify on its first HA connection, including recovery after a brief
 radio gap. A repeated or older counter never creates a new event. Old firmware's
 null tipping fields and a reboot's unknown event age do not create events.
 
-HA saves the candidate before checking its location, then rechecks every five
-seconds for up to 30 minutes. This avoids losing a tip when the first range report
+HA saves the candidate before checking its location, then rechecks on MQTT reports
+and changes to location, freshness or sensor health for up to 30 minutes. This avoids losing a tip when the first range report
 briefly says Home/unknown or the location entity has not updated yet. It requires
 **fresh Out** and healthy motion telemetry before queueing and again before
 notification. A bin brought Home before delivery is excluded. The calendar must
 schedule that bin's category on the event's local date. For an event just before
 midnight, yesterday's saved reminder history is used if the provider has already
 removed those events; today's calendar always takes precedence over saved history.
+Calendar changes also recheck pending candidates. If a calendar query fails, the
+candidate stays saved and a one-minute retry is scheduled only while that recent
+event still needs resolution; unrelated pending batch deadlines remain armed.
 
 The first qualifying bin opens a **fixed 60-second window**. Other bins can join
-without extending it. The five-second clock flushes after the deadline (normally
-within five seconds), or after a restart once dependencies have recovered. Bins whose location or health is still unknown, unavailable or stale stay pending
+without extending it. A single timer wakes the automation at the earliest deadline.
+There is no periodic clock trigger; an empty queue leaves the timer idle. Startup
+and automation reload recheck saved deadlines, including timers that expired while
+HA was offline (HA does not replay missed timer-finished events). Bins whose location or health is still unknown, unavailable or stale stay pending
 at their original deadlines for up to the 30-minute recovery limit; other resolved
 bins can notify immediately. Once their dependencies recover, deferred bins can
 notify without another 60-second wait. Fresh Home suppresses that bin. New tips
 after an expired window get a new fixed window even while an older bin is deferred.
-An event older than the 30-minute recovery limit is discarded. The queued automation has
+An unresolved batch gets one expiry wake at the end of the 30-minute recovery limit;
+earlier dependency recovery can deliver it and cancel that wake. An event older
+than the recovery limit is discarded. The queued automation has
 no blocking delay, so one bin cannot prevent another from joining. A new bin
 arriving after the deadline opens a new window. Messages use singular/plural forms
 and a natural list, for example:
@@ -164,7 +173,8 @@ ledger stores each bin's highest accepted counter, event timestamp
 and last attempted collection date. Each bin is attempted at most once per local
 collection date, even if tipped more than once. Attempts and batch removal are
 saved before notification delivery; failed delivery is recorded in the HA trace
-and is not retried automatically. This also means an interruption between marking
+and is not retried automatically. A notification error does not prevent scheduling
+the timer for other pending bins. This also means an interruption between marking
 an attempt and sending can lose a notification; the scheduled reminder remains
 the fallback. HA helper restoration protects normal restarts, not transactional
 exactly-once delivery across abrupt power loss.

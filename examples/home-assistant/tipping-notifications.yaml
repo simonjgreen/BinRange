@@ -9,6 +9,11 @@ input_text:
     name: BinRange tip batch
     max: 255
 
+timer:
+  binrange_tip_flush:
+    name: BinRange tip flush
+    restore: true
+
 automation:
 - id: binrange_tipping_notifications
   alias: BinRange tipped bins assumed emptied
@@ -22,20 +27,58 @@ automation:
   - trigger: mqtt
     topic: binrange/tag/+/anchor/replace_me_anchor/state
     id: report
-  - trigger: time_pattern
-    seconds: /5
+  - trigger: event
+    event_type: timer.finished
+    event_data: {entity_id: timer.binrange_tip_flush}
+    id: tick
+  - trigger: state
+    entity_id:
+    - sensor.replace_me_bin_1_location
+    - sensor.replace_me_bin_2_location
+    - sensor.replace_me_bin_3_location
+    - sensor.replace_me_bin_4_location
+    - sensor.replace_me_bin_5_location
+    - sensor.replace_me_bin_6_location
+    - binary_sensor.replace_me_bin_1_range_freshness_a
+    - binary_sensor.replace_me_bin_2_range_freshness_a
+    - binary_sensor.replace_me_bin_3_range_freshness_a
+    - binary_sensor.replace_me_bin_4_range_freshness_a
+    - binary_sensor.replace_me_bin_5_range_freshness_a
+    - binary_sensor.replace_me_bin_6_range_freshness_a
+    - binary_sensor.replace_me_bin_1_motion_sensor_fault_a
+    - binary_sensor.replace_me_bin_2_motion_sensor_fault_a
+    - binary_sensor.replace_me_bin_3_motion_sensor_fault_a
+    - binary_sensor.replace_me_bin_4_motion_sensor_fault_a
+    - binary_sensor.replace_me_bin_5_motion_sensor_fault_a
+    - binary_sensor.replace_me_bin_6_motion_sensor_fault_a
+    to: null
+    id: tick
+  - trigger: state
+    entity_id: calendar.replace_me_collection_schedule
+    id: tick
+  - trigger: state
+    entity_id: input_text.replace_me_collection_dates
+    to: null
+    id: tick
+  - trigger: event
+    event_type: automation_reloaded
     id: tick
   - trigger: homeassistant
     event: start
     id: tick
   conditions: []
   actions:
-  - alias: Only real report, clock and startup triggers may process events
+  - alias: Only report, dependency, timer and recovery triggers may process events
     condition: template
     value_template: >-
       {{ trigger is defined and
          ((trigger.id == 'report' and trigger.platform == 'mqtt') or
-          (trigger.id == 'tick' and trigger.platform in ['time_pattern', 'homeassistant'])) }}
+          (trigger.id == 'tick' and
+           (trigger.platform in ['state', 'homeassistant'] or
+            (trigger.platform == 'event' and
+             (trigger.event.event_type == 'automation_reloaded' or
+              (trigger.event.event_type == 'timer.finished' and
+               trigger.event.data.entity_id == 'timer.binrange_tip_flush')))))) }}
   - variables:
       bins:
       - {id: '1', tag: replace_me_tag_1, slug: replace_me_bin_1, name: Bin 1, category: waste}
@@ -46,6 +89,7 @@ automation:
       - {id: '6', tag: replace_me_tag_6, slug: replace_me_bin_6, name: Bin 6, category: glass}
       calendar_entity: calendar.replace_me_collection_schedule
       clock: '{{ as_timestamp(now()) }}'
+      calendar_retry: 0
       ledger: "{{ states('input_text.binrange_tip_ledger') | from_json(none) }}"
       batch: "{{ states('input_text.binrange_tip_batch') | from_json(none) }}"
   - alias: Fail closed on missing, damaged or incompatible history
@@ -132,6 +176,7 @@ automation:
       then:
       - alias: Send one grouped emptying notification
         action: notify.send_message
+        continue_on_error: true
         target: {entity_id: notify.replace_me_phone_group}
         data:
           title: "{{ 'The bin has just been emptied' if eligible | length == 1 else 'The bins have just been emptied' }}"
@@ -193,43 +238,87 @@ automation:
                is_state('binary_sensor.' ~ bin.slug ~ '_motion_sensor_fault_a', 'off') }}
         then:
         - variables:
+            collection_calendar: {}
             collection_date: "{{ (as_datetime(row[1]) | as_local).date().isoformat() }}"
         - action: calendar.get_events
+          continue_on_error: true
           target: {entity_id: calendar.replace_me_collection_schedule}
           data:
             start_date_time: "{{ collection_date ~ ' 00:00:00' }}"
             end_date_time: "{{ (strptime(collection_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d') ~ ' 00:00:00' }}"
           response_variable: collection_calendar
-        - variables:
-            categories: >-
-              {% set ns = namespace(items=[]) %}
-              {% for event in collection_calendar[calendar_entity]['events'] %}
-                {% if (event.start | string)[:10] == collection_date %}
-                  {% for part in event.summary.split(',') %}
-                    {% set ns.items = ns.items + [part | trim | lower] %}
-                  {% endfor %}
-                {% endif %}
-              {% endfor %}
-              {% set saved = states('input_text.replace_me_collection_dates') | from_json(none) %}
-              {{ saved.get(collection_date, []) if ns.items | length == 0 and
-                 collection_date < now().date().isoformat() and saved is mapping else ns.items }}
         - if:
           - condition: template
-            value_template: '{{ bin.category in categories }}'
+            value_template: >-
+              {{ collection_calendar is mapping and calendar_entity in collection_calendar and
+                 collection_calendar[calendar_entity] is mapping and
+                 collection_calendar[calendar_entity].get('events') is sequence and
+                 collection_calendar[calendar_entity].get('events') is not string }}
           then:
           - variables:
-              open_deadlines: "{{ batch.values() | select('gt', clock) | list }}"
-          - variables:
-              deadline: "{{ open_deadlines | min if open_deadlines | length > 0 else (clock + 60) | round(0, 'ceil') | int }}"
-          - variables:
-              batch: '{{ dict(batch, **{bin.id: deadline}) }}'
-          - action: input_text.set_value
-            target: {entity_id: input_text.binrange_tip_batch}
-            data: {value: "{{ batch | to_json | replace(' ', '') }}"}
+              categories: >-
+                {% set ns = namespace(items=[]) %}
+                {% for event in collection_calendar[calendar_entity]['events'] %}
+                  {% if (event.start | string)[:10] == collection_date %}
+                    {% for part in event.summary.split(',') %}
+                      {% set ns.items = ns.items + [part | trim | lower] %}
+                    {% endfor %}
+                  {% endif %}
+                {% endfor %}
+                {% set saved = states('input_text.replace_me_collection_dates') | from_json(none) %}
+                {{ saved.get(collection_date, []) if ns.items | length == 0 and
+                   collection_date < now().date().isoformat() and saved is mapping else ns.items }}
+          - if:
+            - condition: template
+              value_template: '{{ bin.category in categories }}'
+            then:
+            - variables:
+                open_deadlines: "{{ batch.values() | select('gt', clock) | list }}"
+            - variables:
+                deadline: "{{ open_deadlines | min if open_deadlines | length > 0 else (clock + 60) | round(0, 'ceil') | int }}"
+            - variables:
+                batch: '{{ dict(batch, **{bin.id: deadline}) }}'
+            - action: input_text.set_value
+              target: {entity_id: input_text.binrange_tip_batch}
+              data: {value: "{{ batch | to_json | replace(' ', '') }}"}
+            else:
+            - alias: Remember this counter but discard an event on a noncollection day
+              variables:
+                ledger: '{{ dict(ledger, **{bin.id: [row[0], 0, row[2]]}) }}'
+            - action: input_text.set_value
+              target: {entity_id: input_text.binrange_tip_ledger}
+              data: {value: "{{ ledger | to_json | replace(' ', '') }}"}
           else:
-          - alias: Remember this counter but discard an event on a noncollection day
+          - alias: Preserve candidate on calendar failure and retry only this pending work
             variables:
-              ledger: '{{ dict(ledger, **{bin.id: [row[0], 0, row[2]]}) }}'
-          - action: input_text.set_value
-            target: {entity_id: input_text.binrange_tip_ledger}
-            data: {value: "{{ ledger | to_json | replace(' ', '') }}"}
+              calendar_retry: '{{ clock + 60 }}'
+  - alias: Find the next grouping deadline or unresolved event expiry
+    variables:
+      next_deadline: >-
+        {% set ns = namespace(times=[calendar_retry] if calendar_retry > 0 else []) %}
+        {% for key, deadline in batch.items() %}
+          {% set ns.times = ns.times + [deadline if deadline > clock else ledger[key][1] + 1801] %}
+        {% endfor %}
+        {{ ns.times | min if ns.times else 0 }}
+  - alias: Sleep until work is due; leave an already correct timer alone
+    if:
+    - condition: template
+      value_template: '{{ next_deadline > 0 }}'
+    then:
+    - if:
+      - condition: template
+        value_template: >-
+          {{ not is_state('timer.binrange_tip_flush', 'active') or
+             (as_timestamp(state_attr('timer.binrange_tip_flush', 'finishes_at'), 0) - next_deadline) | abs > 1 }}
+      then:
+      - action: timer.start
+        target: {entity_id: timer.binrange_tip_flush}
+        data:
+          duration: "{{ [1, (next_deadline - as_timestamp(now())) | round(0, 'ceil') | int] | max }}"
+    else:
+    - if:
+      - condition: template
+        value_template: "{{ is_state('timer.binrange_tip_flush', 'active') or is_state('timer.binrange_tip_flush', 'paused') }}"
+      then:
+      - action: timer.cancel
+        target: {entity_id: timer.binrange_tip_flush}

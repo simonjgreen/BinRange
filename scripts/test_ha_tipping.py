@@ -62,6 +62,8 @@ class Harness:
         self.messages = []
         self.calls = []
         self.fail_notify = False
+        self.fail_calendar = False
+        self.timer_deadline = None
         self.env = Environment(undefined=StrictUndefined)
         self.env.filters.update(to_json=json.dumps, from_json=from_json,
                                 as_local=lambda v: v.astimezone(LONDON))
@@ -70,6 +72,8 @@ class Harness:
                                 timedelta=timedelta,
                                 states=lambda k: self.states.get(k, 'unknown'),
                                 is_state=lambda k, v: self.states.get(k) == v)
+        self.env.globals['state_attr'] = lambda k, a: (
+            self.timer_deadline.isoformat() if a == 'finishes_at' and self.timer_deadline else None)
 
     def render(self, node, context):
         if isinstance(node, str) and ('{{' in node or '{%' in node):
@@ -112,13 +116,28 @@ class Harness:
                 self.states[entity] = value
                 self.calls.append(('write', entity, value))
             elif action.get('action') == 'calendar.get_events':
+                if self.fail_calendar:
+                    if action.get('continue_on_error'):
+                        continue
+                    raise RuntimeError('Simulated calendar failure')
                 context[action['response_variable']] = {
                     context['calendar_entity']: {'events': self.events}}
             elif action.get('action') == 'notify.send_message':
                 self.calls.append(('notify',))
                 if self.fail_notify:
+                    if action.get('continue_on_error'):
+                        continue
                     raise RuntimeError('Simulated notify failure')
                 self.messages.append(self.render(action['data'], context))
+            elif action.get('action') == 'timer.start':
+                duration = self.render(action['data'], context)['duration']
+                self.timer_deadline = self.time + timedelta(seconds=duration)
+                self.states['timer.binrange_tip_flush'] = 'active'
+                self.calls.append(('timer_start', duration))
+            elif action.get('action') == 'timer.cancel':
+                self.timer_deadline = None
+                self.states['timer.binrange_tip_flush'] = 'idle'
+                self.calls.append(('timer_cancel',))
             else:
                 raise AssertionError(f'Unsupported action {action}')
 
@@ -138,13 +157,108 @@ class Harness:
 
     def tick(self, seconds=0, startup=False):
         self.time += timedelta(seconds=seconds)
-        self.run({'id': 'tick', 'platform': 'homeassistant' if startup else 'time_pattern'})
+        self.run({'id': 'tick', 'platform': 'homeassistant' if startup else 'state'})
+
+    def advance(self, seconds):
+        """Pass quiet time, dispatching only timers actually requested by the YAML."""
+        end = self.time + timedelta(seconds=seconds)
+        while self.timer_deadline is not None and self.timer_deadline <= end:
+            self.time = self.timer_deadline
+            self.timer_deadline = None
+            self.states['timer.binrange_tip_flush'] = 'idle'
+            self.run({'id': 'tick', 'platform': 'event',
+                      'event': {'event_type': 'timer.finished',
+                                'data': {'entity_id': 'timer.binrange_tip_flush'}}})
+        self.time = end
 
     def helper(self, name):
         return json.loads(self.states[f'input_text.binrange_tip_{name}'])
 
 
 class TippingTest(unittest.TestCase):
+    def test_calendar_failure_retains_candidate_and_retries_only_pending_work(self):
+        h = Harness()
+        h.report(1)
+        h.states['sensor.replace_me_bin_1_location'] = 'unknown'
+        h.states['sensor.replace_me_bin_2_location'] = 'unknown'
+        h.report(2)
+        h.states['sensor.replace_me_bin_2_location'] = 'Out'
+        h.fail_calendar = True
+        h.tick()
+        h.advance(60)
+        self.assertEqual(h.messages, [])
+        self.assertGreater(h.helper('ledger')['2'][1], 0)
+        self.assertEqual(h.timer_deadline, h.time + timedelta(seconds=60))
+        h.fail_calendar = False
+        h.advance(60)
+        h.advance(60)
+        self.assertEqual(len(h.messages), 1)
+        self.assertIn('Bin 2', h.messages[0]['message'])
+        self.assertIn('1', h.helper('batch'))
+        h.advance(1621)
+        self.assertIsNone(h.timer_deadline)
+        self.assertEqual(h.helper('batch'), {})
+
+    def test_quiet_batch_delivers_without_periodic_ticks(self):
+        h = Harness()
+        h.report()
+        h.advance(30)
+        h.report(2)
+        h.advance(29)
+        self.assertEqual(h.messages, [])
+        h.advance(1)
+        self.assertEqual(len(h.messages), 1)
+        self.assertEqual(h.helper('batch'), {})
+        self.assertIsNone(h.timer_deadline)
+        self.assertEqual([c for c in h.calls if c[0] == 'timer_start'], [('timer_start', 60)])
+        before = list(h.calls)
+        h.advance(86400)
+        self.assertEqual(h.calls, before)
+
+    def test_unresolved_deadline_sleeps_until_expiry_or_recovery(self):
+        h = Harness()
+        h.report()
+        h.states['sensor.replace_me_bin_1_location'] = 'unknown'
+        h.advance(60)
+        self.assertEqual(h.messages, [])
+        self.assertEqual(h.timer_deadline, h.time + timedelta(seconds=1741))
+        before = list(h.calls)
+        h.advance(1740)
+        self.assertEqual(h.calls, before)
+        h.advance(1)
+        self.assertEqual(h.helper('batch'), {})
+        self.assertIsNone(h.timer_deadline)
+
+    def test_reload_rearms_original_deadline_and_recovery_cancels_expiry(self):
+        h = Harness()
+        h.report()
+        restored = Harness(h.states)
+        restored.time = h.time + timedelta(seconds=40)
+        restored.run({'id': 'tick', 'platform': 'event',
+                      'event': {'event_type': 'automation_reloaded', 'data': {}}})
+        self.assertEqual(restored.timer_deadline, h.time + timedelta(seconds=60))
+        restored.states['sensor.replace_me_bin_1_location'] = 'unknown'
+        restored.advance(20)
+        restored.states['sensor.replace_me_bin_1_location'] = 'Out'
+        restored.tick(5)
+        self.assertEqual(len(restored.messages), 1)
+        self.assertIsNone(restored.timer_deadline)
+
+    def test_notify_failure_does_not_strand_another_batch_timer(self):
+        h = Harness()
+        h.report(1)
+        h.states['sensor.replace_me_bin_1_location'] = 'unknown'
+        h.advance(70)
+        h.report(2)
+        h.advance(5)
+        h.states['sensor.replace_me_bin_1_location'] = 'Out'
+        h.fail_notify = True
+        h.tick()
+        h.fail_notify = False
+        h.advance(55)
+        self.assertEqual(len(h.messages), 1)
+        self.assertIn('Bin 2', h.messages[0]['message'])
+
     def test_first_connection_recent_event_and_singular_wording(self):
         h = Harness()
         h.report(tip_count=58, tip_age_s=500)
@@ -153,9 +267,10 @@ class TippingTest(unittest.TestCase):
         h.tick(1)
         self.assertEqual(h.messages, [{'title': 'The bin has just been emptied',
             'message': 'Bin 1 has just been emptied. You can now bring it in.'}])
-        self.assertEqual(h.calls[-3][1], 'input_text.binrange_tip_ledger')
-        self.assertEqual(h.calls[-2][1], 'input_text.binrange_tip_batch')
-        self.assertEqual(h.calls[-1], ('notify',))
+        delivery = [c for c in h.calls if c[0] in ('write', 'notify')]
+        self.assertEqual(delivery[-3][1], 'input_text.binrange_tip_ledger')
+        self.assertEqual(delivery[-2][1], 'input_text.binrange_tip_batch')
+        self.assertEqual(delivery[-1], ('notify',))
 
     def test_fixed_window_three_bins_and_boundary_new_batch(self):
         h = Harness()
@@ -338,8 +453,7 @@ class TippingTest(unittest.TestCase):
         h = Harness()
         h.report()
         h.fail_notify = True
-        with self.assertRaises(RuntimeError):
-            h.tick(60)
+        h.tick(60)
         h.fail_notify = False
         h.report()
         h.tick(60)
