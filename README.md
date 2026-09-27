@@ -14,6 +14,20 @@ calendar; BinRange supplies the bin's movement, distance and health.
 A [configurable reminder example](examples/home-assistant/README.md) combines the
 calendar with fresh Home/Out states for put-out and bring-in notifications.
 
+## Phone reminders
+
+**Bins out tomorrow**
+
+<img src="docs/images/bin-notification-put-out.png" alt="Home Assistant notification reminding you to put General Waste, Recycling 1 and Glass out for tomorrow's collection" width="660">
+
+**You have still not put the bins out!**
+
+<img src="docs/images/bin-notification-overdue.png" alt="Home Assistant notification warning that General Waste, Recycling 1 and Glass are still at home and need putting out" width="660">
+
+**The bins have just been emptied**
+
+<img src="docs/images/bin-notification-bring-in.png" alt="Home Assistant notification saying General Waste, Recycling 1 and Glass have been emptied and can now be brought in" width="660">
+
 ## The hardware
 
 The main anchor is now wall mounted in its enclosure, all six bins have tags,
