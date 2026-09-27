@@ -129,6 +129,9 @@ void test_legacy_telemetry_is_explicitly_unknown() {
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"misses\":null"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"wake_count\":null"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"sensor_fault\":null"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_count\":null"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_age_s\":null"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_ready\":null"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"ts\":null"));
 }
 
@@ -188,8 +191,43 @@ void test_truncation_reports_failure_rather_than_bad_json() {
     TEST_ASSERT_EQUAL_UINT32(0, tag_state_json(small, sizeof(small), s));
 }
 
+
+void test_tip_event_and_boot_sentinel_publish_without_counter_truncation() {
+    TagSummary t = full();
+    TagState s{};
+    s.summary = &t;
+    s.has_tip = s.tip_ready = true;
+    s.tip_count = UINT32_MAX;
+    s.tip_age_s = 17;
+    TEST_ASSERT_TRUE(tag_state_json(buf, sizeof(buf), s) > 0);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_count\":4294967295"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_age_s\":17"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_ready\":true"));
+    s.tip_age_s = UINT32_MAX;
+    tag_state_json(buf, sizeof(buf), s);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_count\":4294967295"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_age_s\":null"));
+    s.sensor_fault_known = s.sensor_fault = true;
+    tag_state_json(buf, sizeof(buf), s);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"tip_ready\":false"));
+}
+
+void test_maximum_telemetry_fits_the_publish_buffer() {
+    TagSummary t = full();
+    t.n = 65535;
+    TagState s{&t, 0.0f, "2026-09-08T12:00:00+00:00", UINT32_MAX, false,
+               true, false, true, false, true, 65535, true, UINT32_MAX,
+               true, 65535, true, false, true, true, true, UINT32_MAX, UINT32_MAX - 1};
+    char payload[512];
+    TEST_ASSERT_TRUE(tag_state_json(payload, sizeof(payload), s) > 0);
+    TEST_ASSERT_TRUE(well_formed(payload));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"tip_age_s\":4294967294"));
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
+    RUN_TEST(test_tip_event_and_boot_sentinel_publish_without_counter_truncation);
+    RUN_TEST(test_maximum_telemetry_fits_the_publish_buffer);
     RUN_TEST(test_full_payload_is_well_formed);
     RUN_TEST(test_received_finals_do_not_fabricate_a_success_rate);
     RUN_TEST(test_no_attempts_reports_null_not_a_division);

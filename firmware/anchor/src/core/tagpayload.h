@@ -26,6 +26,10 @@ struct TagState {
     bool absence_known;
     bool absent;
     bool received;
+    bool has_tip;
+    bool tip_ready;
+    uint32_t tip_count;
+    uint32_t tip_age_s;
 };
 
 // Returns the length written, or 0 if it did not fit.

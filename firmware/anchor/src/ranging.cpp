@@ -51,7 +51,7 @@ bool ranging_pop(RangeEvent *out) {
 uint32_t ranging_dropped() { return q_dropped; }
 
 static uint8_t frame_seq_nb = 0;
-static uint8_t rx_buffer[33];
+static uint8_t rx_buffer[FINAL_LEN_WITH_TIP];
 static uint32_t status_reg = 0;
 
 uint16_t ranging_antdly()   { return cur_antdly; }
@@ -293,6 +293,11 @@ static void do_responder() {
                       ((uint32_t)rx_buffer[FINAL_MSG_WAKE_COUNT_IDX + 1] << 8) |
                       ((uint32_t)rx_buffer[FINAL_MSG_WAKE_COUNT_IDX + 2] << 16) |
                       ((uint32_t)rx_buffer[FINAL_MSG_WAKE_COUNT_IDX + 3] << 24);
+    const auto tip = ranging_tip_telemetry(rx_buffer, frame_len);
+    ev.has_tip = tip.has_tip;
+    ev.tip_ready = tip.tip_ready;
+    ev.tip_count = tip.tip_count;
+    ev.tip_age_s = tip.tip_age_s;
     if (xQueueSend(evt_q, &ev, 0) != pdTRUE) q_dropped++;
   }
 

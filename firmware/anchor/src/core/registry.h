@@ -16,6 +16,8 @@ struct TagRecord {
     uint16_t batt_mv;        // 0 means unknown; clears a prior measurement
     uint16_t misses;         // cumulative failed local exchanges since boot
     uint32_t wake_count;     // since-boot diagnostic, not total_increasing
+    uint32_t tip_count;      // persistent tag event counter
+    uint32_t tip_age_s;      // at reception; UINT32_MAX means no event this boot
     uint32_t last_seen_ms;
     uint32_t adopted_ms;     // monotonic time used for never-heard absence
     uint32_t last_seen_epoch; // real reception wall time, or zero if unknown
@@ -35,7 +37,11 @@ struct TagRecord {
     bool heard : 1;
     bool absence_known : 1;
     bool absent : 1;
+    bool has_tip : 1;
+    bool tip_ready : 1;
     TagStats stats;
+
+    void set_tip(bool known, bool ready, uint32_t count, uint32_t age_s);
 };
 
 class Registry {

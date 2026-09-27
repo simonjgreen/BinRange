@@ -25,6 +25,15 @@ int main(void) {
         0x78,0x56,0x34,0x12,0xf0,0xde,0xbc,0x9a,4,3,2,1,
         0x86,0x0b,0x03,0x34,0x12,0xef,0xcd,0xab,0x89,0,0};
     assert(!memcmp(telemetry, want_telemetry, sizeof(telemetry)));
+    uint8_t tipped[41];
+    br_final_tipping(tipped, 0xb100, 9, 0x12345678, 0x9abcdef0, 0x01020304,
+                     2950, BR_FINAL_FLAG_MOVING | BR_FINAL_FLAG_TIP_READY,
+                     0x1234, 0x89abcdef, 0x01020304, 42);
+    assert(!memcmp(tipped, telemetry, 24));
+    assert(tipped[24] == 5);
+    assert(!memcmp(tipped + 25, telemetry + 25, 6));
+    const uint8_t tip_tail[] = {4,3,2,1,42,0,0,0,0,0};
+    assert(!memcmp(tipped + 31, tip_tail, sizeof(tip_tail)));
     uint8_t response[] = {0x41,0x88,99,0xca,0xde,0,0xb1,0x57,0x41,0x10,2,0,0,0};
     assert(br_response_valid(response, sizeof(response), 0xb100));
     assert(!br_response_valid(response, sizeof(response), 0xb001));

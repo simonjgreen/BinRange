@@ -57,6 +57,7 @@ static const PhyTiming PHY_TIMING[PHY_COUNT] = {
 #define FINAL_LEN_WITH_BATT       26
 #define FINAL_LEN_WITH_TELEMETRY  29
 #define FINAL_LEN_WITH_WAKE_COUNT 33
+#define FINAL_LEN_WITH_TIP        41
 
 // A tag that reports itself moving is expected to report often, so silence
 // means a lost link rather than a bin that has not moved. Without this, a
@@ -98,4 +99,8 @@ struct RangeEvent {
     bool has_battery;   // includes the older battery-only 26-byte layout
     bool has_telemetry; // 29-byte telemetry (or newer) was present
     bool has_wake_count;
+    bool has_tip;
+    bool tip_ready;
+    uint32_t tip_count;
+    uint32_t tip_age_s;
 };

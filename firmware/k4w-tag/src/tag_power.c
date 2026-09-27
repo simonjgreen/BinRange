@@ -2,6 +2,7 @@
  * No System OFF, automatic UICR programming or assumed battery percentage. */
 #include "tag_power.h"
 #include "motion_settings.h"
+#include "tip_monitor.h"
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/adc.h>
 #include <zephyr/drivers/i2c.h>
@@ -16,7 +17,11 @@
 static K_SEM_DEFINE(wake, 0, 1);
 static K_MUTEX_DEFINE(config_lock);
 static struct br_motion_settings motion_settings;
-static struct br_power_status status = { .sensor_error = -ENODEV };
+static struct br_power_status status = { .sensor_error = -ENODEV, .tip_age_s = UINT32_MAX };
+static br_tip_record tip_saved;
+static br_tip_monitor tip_monitor;
+static int tip_load_error;
+static bool tip_started;
 static atomic_t motion_pending, irq_count;
 static const struct device *const accel = DEVICE_DT_GET(DT_NODELABEL(accel));
 static const struct i2c_dt_spec bus = I2C_DT_SPEC_GET(DT_NODELABEL(accel));
@@ -30,6 +35,14 @@ void br_app_wake(void) { k_sem_give(&wake); }
 void br_app_wait(uint32_t ms) { (void)k_sem_take(&wake, K_MSEC(ms)); }
 
 static int config_load(const char *name, size_t len, settings_read_cb read, void *arg) {
+    if (!strcmp(name, "tip_v1")) {
+        if (len != sizeof(tip_saved) || read(arg, &tip_saved, sizeof(tip_saved)) != sizeof(tip_saved) ||
+            !br_tip_record_valid(&tip_saved)) {
+            tip_load_error = -EINVAL;
+            return tip_load_error;
+        }
+        return 0;
+    }
     struct br_motion_config next;
     if (strcmp(name, "v1")) return -ENOENT;
     if (len != sizeof(next) || read(arg, &next, sizeof(next)) != sizeof(next) ||
@@ -127,6 +140,46 @@ bool br_power_sensor_check(void) {
     sensor_result(rc);
     return rc == 0;
 }
+static int tip_read(void *context, int32_t sample[3]) {
+    ARG_UNUSED(context);
+    if (status.sensor_error) return status.sensor_error;
+    /* The pinned LIS2DH fetch returns success even when DRDY was clear.
+     * Check ZYXDA explicitly so the debounce never counts a held sample twice. */
+    uint8_t data_status;
+    int rc = i2c_reg_read_byte_dt(&bus, 0x27, &data_status);
+    if (rc) return rc;
+    if (!(data_status & 0x08)) return -ENODATA;
+    struct sensor_value values[3];
+    rc = sensor_sample_fetch(accel);
+    if (!rc) rc = sensor_channel_get(accel, SENSOR_CHAN_ACCEL_XYZ, values);
+    if (rc) return rc;
+    for (unsigned i=0; i<3; ++i) {
+        int64_t micro = (int64_t)values[i].val1 * 1000000 + values[i].val2;
+        sample[i] = (int32_t)(micro * 1000 / SENSOR_G);
+    }
+    return 0;
+}
+static int tip_save(void *context, const br_tip_record *record) {
+    ARG_UNUSED(context);
+    return settings_save_one("motion/tip_v1", record, sizeof(*record));
+}
+bool br_power_tip_update(uint64_t now, bool moving, bool *event) {
+    if (!tip_started) {
+        br_tip_monitor_init(&tip_monitor, &tip_saved, tip_load_error);
+        tip_started = true;
+    }
+    uint32_t before = tip_monitor.committed_count;
+    bool changed = br_tip_monitor_update(&tip_monitor, now, moving, tip_read, tip_save, NULL);
+    *event = before != tip_monitor.committed_count;
+    k_mutex_lock(&config_lock, K_FOREVER);
+    status.tip_count = tip_monitor.committed_count;
+    status.tip_age_s = br_tip_age_s(&tip_monitor.policy, now);
+    status.tip_ready = br_tip_monitor_ready(&tip_monitor);
+    status.tip_error = tip_monitor.error;
+    k_mutex_unlock(&config_lock);
+    return changed;
+}
+uint64_t br_power_tip_deadline(void) { return br_tip_monitor_deadline(&tip_monitor); }
 uint16_t br_power_voltage(void) {
     if (!adc_ready) {
         const struct adc_channel_cfg channel = {

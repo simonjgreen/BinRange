@@ -41,6 +41,7 @@ TagRecord *Registry::touch(uint16_t addr, uint32_t now_ms) {
     t->misses_known = false;
     t->wake_count = 0;
     t->wake_count_known = false;
+    t->set_tip(false, false, 0, UINT32_MAX);
     t->last_seen_ms = now_ms;
     t->adopted_ms = now_ms;
     t->last_seen_epoch = 0;
@@ -92,4 +93,11 @@ size_t Registry::adopted_count() const {
     for (size_t i = 0; i < n_; i++)
         if (tags_[i].adopted) c++;
     return c;
+}
+
+void TagRecord::set_tip(bool known, bool ready, uint32_t count, uint32_t age_s) {
+    has_tip = known;
+    tip_ready = known && ready && !sensor_fault;
+    tip_count = known ? count : 0;
+    tip_age_s = known ? age_s : UINT32_MAX;
 }

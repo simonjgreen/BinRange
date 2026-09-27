@@ -44,15 +44,34 @@ every retained topic/history row. Cleanup must target exact IDs, not all HA data
   retained configuration does not postpone it; raised absence clears only
   after a real reception.
 
-Extended FINAL is 33 bytes: timestamps 10–21, millivolts 22–23, flags 24
-(moving bit 0 / sensor-fault bit 1), missed exchanges 25–26, wakes 27–30, then FCS.
-Integers are little-endian; legacy 24/26/29-byte layouts remain accepted.
+Extended FINAL is 41 bytes: timestamps 10–21, millivolts 22–23, flags 24
+(moving bit 0 / sensor-fault bit 1 / tip-ready bit 2), missed exchanges 25–26,
+wakes 27–30, persistent tip count 31–34, tip age in seconds 35–38, FCS 39–40.
+Integers are little-endian; legacy 24/26/29/33-byte layouts remain accepted.
 Misses/wakes saturate and reset on boot. Wakes count motion episodes, not IRQs.
 
 Unknown telemetry is null, not zero/stationary. Zero millivolts clears an old
 voltage; sensor fault makes motion unknown. `ok` is unknown because received
 FINALs cannot establish an end-to-end success denominator. MQTT binary templates
 use native None for unknown, not OFF.
+
+Tipping telemetry is repeated in every normal state report:
+
+- `tip_count` is a persistent counter of confirmed tipping events. It identifies
+  an event across missing radio reports and restarts; it is not a collection count.
+- `tip_age_s` is elapsed time since the most recent confirmed tip, measured at
+  the tag's report. The wire sentinel `UINT32_MAX` becomes JSON null when no tip
+  occurred in this boot, even if a persistent count exists. Stale/reconnect
+  publication preserves both this age and the original reception `ts`.
+- `tip_ready` is true only when the tag has a calibrated, healthy detector.
+  A sensor fault forces false. Older firmware makes all three fields null and
+  clears previously received tipping telemetry.
+
+Home Assistant discovers diagnostic Tip count, Tip age (seconds), and Tip ready
+entities, using `tip_count`, `tip_age_s`, and `tip_ready` discovery keys. Tip count
+has no `total_increasing` state class. Consumers can estimate the event time as
+`ts - tip_age_s`, but must reject unknown/stale timestamps and deduplicate the
+persistent counter before producing notifications.
 
 ## Home Assistant presentation
 

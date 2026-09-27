@@ -108,8 +108,27 @@ void test_names_are_truncated_not_overflowed() {
     TEST_ASSERT_TRUE(strlen(t->area) < sizeof(t->area));
 }
 
+
+void test_tip_telemetry_is_replaced_and_legacy_report_clears_it() {
+    Registry r;
+    TagRecord *t = r.touch(0x4556, 1000);
+    t->set_tip(true, true, 42, 17);
+    TEST_ASSERT_TRUE(t->has_tip);
+    TEST_ASSERT_TRUE(t->tip_ready);
+    TEST_ASSERT_EQUAL_UINT32(42, t->tip_count);
+    TEST_ASSERT_EQUAL_UINT32(17, t->tip_age_s);
+    // Passing stale field values with unknown telemetry must never preserve
+    // them when a device is downgraded/replaced by older firmware.
+    t->set_tip(false, true, 42, 17);
+    TEST_ASSERT_FALSE(t->has_tip);
+    TEST_ASSERT_FALSE(t->tip_ready);
+    TEST_ASSERT_EQUAL_UINT32(0, t->tip_count);
+    TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, t->tip_age_s);
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
+    RUN_TEST(test_tip_telemetry_is_replaced_and_legacy_report_clears_it);
     RUN_TEST(test_unknown_tag_is_created_unadopted);
     RUN_TEST(test_touch_is_idempotent_and_updates_last_seen);
     RUN_TEST(test_adopt_sets_name_and_offset);

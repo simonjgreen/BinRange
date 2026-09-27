@@ -181,8 +181,32 @@ void test_anchor_table_is_populated() {
     }
 }
 
+
+void test_tip_entities_preserve_unknown_and_fit_discovery() {
+    unsigned found = 0;
+    for (size_t i = 0; i < TAG_ENTITY_COUNT; ++i) {
+        const auto &e = TAG_ENTITIES[i];
+        if (strncmp(e.key, "tip_", 4)) continue;
+        ++found;
+        TEST_ASSERT_TRUE(e.diagnostic);
+        TEST_ASSERT_NULL(e.state_class);
+        TEST_ASSERT_TRUE(discovery_tag_entity(buf, sizeof(buf), e, "4556", "a", "Kitchen Bin", "Driveway", "0.2.5") > 0);
+        TEST_ASSERT_TRUE(has("binrange_4556_a_tip_"));
+        if (!strcmp(e.key, "tip_ready")) {
+            TEST_ASSERT_EQUAL_STRING("binary_sensor", e.component);
+            TEST_ASSERT_TRUE(has("value_json.tip_ready is true"));
+            TEST_ASSERT_TRUE(has("else none"));
+        } else {
+            TEST_ASSERT_EQUAL_STRING("sensor", e.component);
+            if (!strcmp(e.key, "tip_age_s")) TEST_ASSERT_EQUAL_STRING("s", e.unit);
+        }
+    }
+    TEST_ASSERT_EQUAL_UINT(3, found);
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
+    RUN_TEST(test_tip_entities_preserve_unknown_and_fit_discovery);
     RUN_TEST(test_object_id_is_unique_per_tag_anchor_and_key);
     RUN_TEST(test_distance_payload_has_required_fields);
     RUN_TEST(test_availability_points_at_the_publishing_anchor);

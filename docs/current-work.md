@@ -23,6 +23,15 @@ Git. For an existing local installation, consult its ignored deployment notes.
 Evidence and qualifications are in [findings](findings.md), not an exhaustive
 chronological build log.
 
+## Tipping notification implementation
+
+Tag firmware 0.2.7 and anchor 0.2.5 add calibrated gravity-relative tipping events.
+The [HA tipping example](../examples/home-assistant/README.md#tipping-triggered-emptying-messages)
+assumes a tip beyond 90 degrees means emptying, groups notifications and keeps
+scheduled reminders as fallback. Software tests and signed-image checks do not
+replace a real installed tipping test. Deployment state and exact artifacts live
+in the ignored installation release records.
+
 ## Next acceptance work
 
 | Area | Completion criterion |

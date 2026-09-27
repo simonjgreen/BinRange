@@ -90,3 +90,12 @@ discoverable. Do not disable recovery to reduce power.
 Image capacity is 212992 bytes including signing overhead. LTO/local ISR tables
 are required by the integrated candidate. Verify each exact signed artifact;
 never silently repartition an installed tag. See the [build guide](../firmware/k4w-tag/BUILD.md).
+
+
+For the tipping classifier in tag 0.2.7+, CTRL2 remains 0x01: the high-pass path
+feeds the motion interrupt, while output samples retain gravity (FDS is clear).
+No new sensor or interrupt wiring is required. The firmware checks orientation
+at 25 Hz during motion/leaning and at 1 Hz while idle; the latter covers slow
+rotation below the existing delta-interrupt threshold. Initial upright reference
+capture, filtering and event limitations are documented in the
+[build guide](../firmware/k4w-tag/BUILD.md#tipping-detection-027).

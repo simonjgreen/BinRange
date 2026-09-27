@@ -183,7 +183,7 @@ static struct mgmt_callback command_callback = {
 };
 
 static int status_read(struct smp_streamer *ctxt) {
-    BUILD_ASSERT(CONFIG_MCUMGR_SMP_CBOR_MAX_MAIN_MAP_ENTRIES >= 18,
+    BUILD_ASSERT(CONFIG_MCUMGR_SMP_CBOR_MAX_MAIN_MAP_ENTRIES >= 22,
                  "status includes motion/power diagnostics");
     zcbor_state_t *z = ctxt->writer->zs;
     struct br_power_status power;
@@ -207,7 +207,11 @@ static int status_read(struct smp_streamer *ctxt) {
         zcbor_tstr_put_lit(z, "misses") && zcbor_uint32_put(z, power.misses) &&
         zcbor_tstr_put_lit(z, "uwb_sleeping") && zcbor_bool_put(z, power.sleeping) &&
         zcbor_tstr_put_lit(z, "config_pending") && zcbor_bool_put(z, power.config_pending) &&
-        zcbor_tstr_put_lit(z, "config_schema") && zcbor_uint32_put(z, 1);
+        zcbor_tstr_put_lit(z, "config_schema") && zcbor_uint32_put(z, 1) &&
+        zcbor_tstr_put_lit(z, "tip_ready") && zcbor_bool_put(z, power.tip_ready) &&
+        zcbor_tstr_put_lit(z, "tip_count") && zcbor_uint32_put(z, power.tip_count) &&
+        zcbor_tstr_put_lit(z, "tip_age_s") && zcbor_uint32_put(z, power.tip_age_s) &&
+        zcbor_tstr_put_lit(z, "tip_error") && zcbor_int32_put(z, power.tip_error);
     k_mutex_unlock(&lock);
     return ok ? MGMT_ERR_EOK : MGMT_ERR_EMSGSIZE;
 }

@@ -79,7 +79,7 @@ static void publish_tag_state_raw(TagRecord *t) {
     t->stats.summarise(&s);
 
     char tag[8], topic[96], ts[40];
-    static char payload[384];
+    static char payload[512];
     tag_id_to_hex(tag, sizeof(tag), t->addr);
     topic_tag_state(topic, sizeof(topic), tag, ANCHOR_ID);
     iso_epoch(ts, sizeof(ts), t->last_seen_epoch);
@@ -90,7 +90,8 @@ static void publish_tag_state_raw(TagRecord *t) {
                 t->misses_known, t->misses,
                 t->wake_count_known, t->wake_count,
                 t->batt_known, t->batt_mv,
-                t->absence_known, t->absent, t->heard};
+                t->absence_known, t->absent, t->heard,
+                t->has_tip, t->tip_ready, t->tip_count, t->tip_age_s};
     if (tag_state_json(payload, sizeof(payload), st))
         mqtt_publish(topic, payload, true);
 }
@@ -263,6 +264,7 @@ void publisher_loop() {
         t->misses = ev.misses;
         t->wake_count_known = ev.has_wake_count;
         t->wake_count = ev.wake_count;
+        t->set_tip(ev.has_tip, ev.tip_ready, ev.tip_count, ev.tip_age_s);
         // A real reception clears the absence latch, while preserving its
         // actual age if queue delay has already crossed a threshold.
         update_tag_freshness(t, drained_ms, true);

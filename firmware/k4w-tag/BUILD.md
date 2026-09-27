@@ -150,3 +150,35 @@ controller will not write to it until this stronger status contract is available
 Build and deploy the application through the existing signed-update process;
 do not replace an installed bootloader or signing key. Configuration operations
 persist the settings in `motion/v1` without changing provisioning or bonds.
+
+### Tipping detection (0.2.7+)
+
+With anchor 0.2.5+, the tag reports a persistent tipping counter and the age of
+its latest tip. The first installation of this feature needs the bin upright
+and stationary: 50 stable samples at 25 Hz establish its mounting reference.
+That reference is saved once and survives subsequent reboots. Moving samples,
+read failures and accelerations outside 0.75–1.25 g do not establish a reference.
+A stationary bin that is already inverted at first setup would establish the
+wrong reference; keep bins upright during initial commissioning of this feature.
+
+The existing motion interrupt wakes the main owner, which reads unfiltered
+three-axis acceleration at 25 Hz. An independent 1 Hz idle check catches gradual
+tilt; leaning beyond 45 degrees promotes sampling to 25 Hz without a motion IRQ.
+Three consecutive valid samples more than 90 degrees from the reference count
+as a tip. Exactly 90 degrees does not. Five consecutive samples within 45 degrees
+rearm the detector. Restarting while inverted does not generate another event.
+The idle checks add sensor/CPU activity; whole-board battery impact is unmeasured.
+
+The counter is saved before a new event is advertised as ready, and a new tip
+requests an immediate radio report plus the existing moving report cadence.
+Every subsequent report repeats the count and growing event age, so a brief
+radio outage does not discard the event. Counter/reference storage errors fail
+closed and are exposed by `tip_error` in authenticated BLE status. `tip_ready`,
+`tip_count` and `tip_age_s` are also available there. No event since reboot uses
+`UINT32_MAX` age; the anchor converts that sentinel to null. A reboot preserves
+the counter/reference but cannot reconstruct the event's age without a clock.
+
+This is a gravity-based tipping heuristic, not proof of empty contents. Spinning
+an upright bin about the vertical axis does not count. Motion acceleration can
+affect the angle estimate, and events shorter than the sampling/debounce window
+can be missed; validate representative collection handling on the actual bins.

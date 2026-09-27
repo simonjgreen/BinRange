@@ -1,0 +1,235 @@
+# HA package: configure every replace_me_* value before enabling. See README.md.
+# Keep these helper names stable. Initialize each to {} ONCE; never set initial.
+# Compact ledger supports six physical bins (IDs 1..6) within 255 characters.
+input_text:
+  binrange_tip_ledger:
+    name: BinRange tip ledger
+    max: 255
+  binrange_tip_batch:
+    name: BinRange tip batch
+    max: 255
+
+automation:
+- id: binrange_tipping_notifications
+  alias: BinRange tipped bins assumed emptied
+  description: >-
+    Due bins tipped beyond 90 degrees are assumed emptied. Wait for fresh Out,
+    group for a fixed 60 seconds, and remember attempts per bin and collection.
+    Existing scheduled reminders remain the fallback. Manual Run is inert.
+  mode: queued
+  max: 100
+  triggers:
+  - trigger: mqtt
+    topic: binrange/tag/+/anchor/replace_me_anchor/state
+    id: report
+  - trigger: time_pattern
+    seconds: /5
+    id: tick
+  - trigger: homeassistant
+    event: start
+    id: tick
+  conditions: []
+  actions:
+  - alias: Only real report, clock and startup triggers may process events
+    condition: template
+    value_template: >-
+      {{ trigger is defined and
+         ((trigger.id == 'report' and trigger.platform == 'mqtt') or
+          (trigger.id == 'tick' and trigger.platform in ['time_pattern', 'homeassistant'])) }}
+  - variables:
+      bins:
+      - {id: '1', tag: replace_me_tag_1, slug: replace_me_bin_1, name: Bin 1, category: waste}
+      - {id: '2', tag: replace_me_tag_2, slug: replace_me_bin_2, name: Bin 2, category: recycling}
+      - {id: '3', tag: replace_me_tag_3, slug: replace_me_bin_3, name: Bin 3, category: recycling}
+      - {id: '4', tag: replace_me_tag_4, slug: replace_me_bin_4, name: Bin 4, category: food}
+      - {id: '5', tag: replace_me_tag_5, slug: replace_me_bin_5, name: Bin 5, category: garden}
+      - {id: '6', tag: replace_me_tag_6, slug: replace_me_bin_6, name: Bin 6, category: glass}
+      calendar_entity: calendar.replace_me_collection_schedule
+      clock: '{{ as_timestamp(now()) }}'
+      ledger: "{{ states('input_text.binrange_tip_ledger') | from_json(none) }}"
+      batch: "{{ states('input_text.binrange_tip_batch') | from_json(none) }}"
+  - alias: Fail closed on missing, damaged or incompatible history
+    condition: template
+    value_template: >-
+      {% set ns = namespace(ok=ledger is mapping and batch is mapping) %}
+      {% set ids = bins | map(attribute='id') | list %}
+      {% if ns.ok %}
+        {% for key, row in ledger.items() %}
+          {% if key not in ids or row is not sequence or row is string or row | length != 3 %}
+            {% set ns.ok = false %}
+          {% else %}
+            {% for value in row %}
+              {% if value is not integer or value < 0 %}{% set ns.ok = false %}{% endif %}
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+        {% for key, deadline in batch.items() %}
+          {% if key not in ids or key not in ledger or deadline is not integer or deadline <= 0 %}
+            {% set ns.ok = false %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {{ ns.ok }}
+  - alias: Close an expired batch before considering newer reports
+    if:
+    - condition: template
+      value_template: "{{ batch.values() | select('le', clock) | list | length > 0 }}"
+    then:
+    - variables:
+        resolved: >-
+          {% set ns = namespace(ids=[]) %}
+          {% for bin in bins if bin.id in batch and batch[bin.id] <= clock %}
+            {% set row = ledger[bin.id] %}
+            {% set fresh = is_state('binary_sensor.' ~ bin.slug ~ '_range_freshness_a', 'off') %}
+            {% set healthy = is_state('binary_sensor.' ~ bin.slug ~ '_motion_sensor_fault_a', 'off') %}
+            {% set known = is_state('sensor.' ~ bin.slug ~ '_location', 'Out') or
+                           is_state('sensor.' ~ bin.slug ~ '_location', 'Home') %}
+            {% if clock - row[1] > 1800 or (fresh and healthy and known) %}
+              {% set ns.ids = ns.ids + [bin.id] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.ids }}
+    - variables:
+        eligible: >-
+          {% set ns = namespace(names=[]) %}
+          {% for bin in bins if bin.id in resolved %}
+            {% set row = ledger[bin.id] %}
+            {% set day = (as_datetime(row[1]) | as_local).strftime('%Y%m%d') | int %}
+            {% if row[2] != day and 0 <= clock - row[1] <= 1800 and
+                  is_state('sensor.' ~ bin.slug ~ '_location', 'Out') and
+                  is_state('binary_sensor.' ~ bin.slug ~ '_range_freshness_a', 'off') and
+                  is_state('binary_sensor.' ~ bin.slug ~ '_motion_sensor_fault_a', 'off') %}
+              {% set ns.names = ns.names + [bin.name] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.names }}
+        ledger: >-
+          {% set ns = namespace(rows=[]) %}
+          {% for key, row in ledger.items() %}
+            {% set day = (as_datetime(row[1]) | as_local).strftime('%Y%m%d') | int %}
+            {% set ns.rows = ns.rows + [(key, [row[0], row[1], day] if key in resolved else row)] %}
+          {% endfor %}
+          {{ dict(ns.rows) }}
+    - alias: Persist attempts before delivery, including bins no longer Out
+      action: input_text.set_value
+      target: {entity_id: input_text.binrange_tip_ledger}
+      data: {value: "{{ ledger | to_json | replace(' ', '') }}"}
+    - alias: Retain unresolved bins at their original deadlines
+      variables:
+        batch: >-
+          {% set ns = namespace(rows=[]) %}
+          {% for key, deadline in batch.items() if key not in resolved %}
+            {% set ns.rows = ns.rows + [(key, deadline)] %}
+          {% endfor %}
+          {{ dict(ns.rows) }}
+    - alias: Remove resolved bins before sending so restart cannot repeat them
+      action: input_text.set_value
+      target: {entity_id: input_text.binrange_tip_batch}
+      data: {value: "{{ batch | to_json | replace(' ', '') }}"}
+    - if:
+      - condition: template
+        value_template: '{{ eligible | length > 0 }}'
+      then:
+      - alias: Send one grouped emptying notification
+        action: notify.send_message
+        target: {entity_id: notify.replace_me_phone_group}
+        data:
+          title: "{{ 'The bin has just been emptied' if eligible | length == 1 else 'The bins have just been emptied' }}"
+          message: >-
+            {% set names = eligible[0] if eligible | length == 1 else
+               (eligible[:-1] | join(', ')) ~ ' and ' ~ eligible[-1] %}
+            {{ names }} {{ 'has' if eligible | length == 1 else 'have' }} just been emptied. You can now bring {{ 'it' if eligible | length == 1 else 'them' }} in.
+  - alias: Retain a genuine new tip even if its first location report is not Out
+    if:
+    - condition: template
+      value_template: "{{ trigger.id == 'report' }}"
+    then:
+    - variables:
+        report: '{{ trigger.payload | from_json(none) }}'
+        matched: "{{ bins | selectattr('tag', 'equalto', trigger.topic.split('/')[2]) | list }}"
+    - if:
+      - condition: template
+        value_template: >-
+          {{ matched | length == 1 and report is mapping and
+             report.get('tip_count') is integer and 0 < report.tip_count <= 4294967295 and
+             report.get('tip_age_s') is integer and 0 <= report.tip_age_s <= 1800 and
+             report.get('tip_ready') is sameas true and report.get('stale') is sameas false and
+             report.get('sensor_fault') is sameas false and report.get('moving') is boolean and
+             as_timestamp(report.get('ts'), none) is not none and
+             0 <= clock - as_timestamp(report.ts) <= 1800 and
+             0 <= clock - as_timestamp(report.ts) + report.tip_age_s <= 1800 }}
+      then:
+      - variables:
+          bin: '{{ matched[0] }}'
+      - variables:
+          previous: '{{ ledger.get(bin.id, [0, 0, 0]) }}'
+      - if:
+        - condition: template
+          value_template: '{{ report.tip_count > previous[0] and bin.id not in batch }}'
+        then:
+        - variables:
+            ledger: >-
+              {{ dict(ledger, **{bin.id: [report.tip_count,
+                 (as_timestamp(report.ts) - report.tip_age_s) | int, previous[2]]}) }}
+        - action: input_text.set_value
+          target: {entity_id: input_text.binrange_tip_ledger}
+          data: {value: "{{ ledger | to_json | replace(' ', '') }}"}
+  - alias: Recheck retained events as fresh Out readings become available
+    repeat:
+      for_each: '{{ bins }}'
+      sequence:
+      - variables:
+          bin: '{{ repeat.item }}'
+      - variables:
+          row: '{{ ledger.get(bin.id, [0, 0, 0]) }}'
+      - if:
+        - condition: template
+          value_template: >-
+            {{ row[1] > 0 and 0 <= clock - row[1] <= 1800 and
+               row[2] != ((as_datetime(row[1]) | as_local).strftime('%Y%m%d') | int) and
+               bin.id not in batch and
+               is_state('sensor.' ~ bin.slug ~ '_location', 'Out') and
+               is_state('binary_sensor.' ~ bin.slug ~ '_range_freshness_a', 'off') and
+               is_state('binary_sensor.' ~ bin.slug ~ '_motion_sensor_fault_a', 'off') }}
+        then:
+        - variables:
+            collection_date: "{{ (as_datetime(row[1]) | as_local).date().isoformat() }}"
+        - action: calendar.get_events
+          target: {entity_id: calendar.replace_me_collection_schedule}
+          data:
+            start_date_time: "{{ collection_date ~ ' 00:00:00' }}"
+            end_date_time: "{{ (strptime(collection_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d') ~ ' 00:00:00' }}"
+          response_variable: collection_calendar
+        - variables:
+            categories: >-
+              {% set ns = namespace(items=[]) %}
+              {% for event in collection_calendar[calendar_entity]['events'] %}
+                {% if (event.start | string)[:10] == collection_date %}
+                  {% for part in event.summary.split(',') %}
+                    {% set ns.items = ns.items + [part | trim | lower] %}
+                  {% endfor %}
+                {% endif %}
+              {% endfor %}
+              {% set saved = states('input_text.replace_me_collection_dates') | from_json(none) %}
+              {{ saved.get(collection_date, []) if ns.items | length == 0 and
+                 collection_date < now().date().isoformat() and saved is mapping else ns.items }}
+        - if:
+          - condition: template
+            value_template: '{{ bin.category in categories }}'
+          then:
+          - variables:
+              open_deadlines: "{{ batch.values() | select('gt', clock) | list }}"
+          - variables:
+              deadline: "{{ open_deadlines | min if open_deadlines | length > 0 else (clock + 60) | round(0, 'ceil') | int }}"
+          - variables:
+              batch: '{{ dict(batch, **{bin.id: deadline}) }}'
+          - action: input_text.set_value
+            target: {entity_id: input_text.binrange_tip_batch}
+            data: {value: "{{ batch | to_json | replace(' ', '') }}"}
+          else:
+          - alias: Remember this counter but discard an event on a noncollection day
+            variables:
+              ledger: '{{ dict(ledger, **{bin.id: [row[0], 0, row[2]]}) }}'
+          - action: input_text.set_value
+            target: {entity_id: input_text.binrange_tip_ledger}
+            data: {value: "{{ ledger | to_json | replace(' ', '') }}"}

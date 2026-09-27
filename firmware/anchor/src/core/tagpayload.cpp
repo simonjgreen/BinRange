@@ -83,6 +83,11 @@ size_t tag_state_json(char *out, size_t n, const TagState &s) {
     else o.null("sensor_fault");
     if (s.wake_count_known) o.uint("wake_count", s.wake_count);
     else o.null("wake_count");
+    if (s.has_tip) o.uint("tip_count", s.tip_count); else o.null("tip_count");
+    if (s.has_tip && s.tip_age_s != UINT32_MAX) o.uint("tip_age_s", s.tip_age_s);
+    else o.null("tip_age_s");
+    if (s.has_tip) o.boolean("tip_ready", s.tip_ready && !s.sensor_fault);
+    else o.null("tip_ready");
     o.boolean("stale", s.stale);
     if (s.absence_known) o.boolean("missing", s.absent); else o.null("missing");
     if (s.received) o.uint("age", s.age_s); else o.null("age");

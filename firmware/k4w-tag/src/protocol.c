@@ -47,6 +47,17 @@ void br_final_telemetry(uint8_t out[BR_FINAL_TELEMETRY_LEN], uint16_t tag,
     out[26] = (uint8_t)(misses >> 8);
     le32(out + 27, wake_count);
 }
+void br_final_tipping(uint8_t out[BR_FINAL_TIPPING_LEN], uint16_t tag,
+                        uint8_t sequence, uint32_t poll_tx,
+                        uint32_t response_rx, uint32_t final_tx,
+                        uint16_t batt_mv, uint8_t flags, uint16_t misses,
+                        uint32_t wake_count, uint32_t tip_count, uint32_t tip_age_s) {
+    memset(out, 0, BR_FINAL_TIPPING_LEN);
+    br_final_telemetry(out, tag, sequence, poll_tx, response_rx, final_tx,
+                       batt_mv, flags, misses, wake_count);
+    le32(out + 31, tip_count);
+    le32(out + 35, tip_age_s);
+}
 bool br_response_valid(const uint8_t *frame, size_t length, uint16_t tag) {
     if (!frame || length != 14) return false;
     const uint8_t expected[10] = {0x41,0x88,frame[2],0xca,0xde,

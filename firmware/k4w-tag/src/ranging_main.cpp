@@ -70,8 +70,8 @@ static bool configure() {
 }
 
 static bool exchange(uint8_t sequence, uint16_t mv, uint8_t flags, uint16_t misses,
-                     uint32_t wakes) {
-    uint8_t poll[12], response[14], final[BR_FINAL_TELEMETRY_LEN];
+                     uint32_t wakes, uint32_t tips = 0, uint32_t tip_age = UINT32_MAX) {
+    uint8_t poll[12], response[14], final[BR_FINAL_TIPPING_LEN];
     br_poll(poll, TAG, sequence);
     dwt_setrxaftertxdelay(100);
     dwt_setrxtimeout(6000);
@@ -98,8 +98,8 @@ static bool exchange(uint8_t sequence, uint16_t mv, uint8_t flags, uint16_t miss
     uint32_t delayed = br_final_schedule(response_rx);
     uint64_t final_tx = br_final_timestamp(delayed, ANT_DELAY);
     dwt_setdelayedtrxtime(delayed);
-    br_final_telemetry(final, TAG, sequence + 1, poll_tx, response_rx, final_tx,
-                       mv, flags, misses, wakes);
+    br_final_tipping(final, TAG, sequence + 1, poll_tx, response_rx, final_tx,
+                       mv, flags, misses, wakes, tips, tip_age);
     dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS_BIT_MASK);
     dwt_writetxdata(sizeof(final), final, 0);
     dwt_writetxfctrl(sizeof(final), 0, 1);
@@ -183,15 +183,22 @@ int main() {
         }
         bool event = br_power_motion_event();
         br_motion_update(&motion, now, event && sensor_ok);
+        bool tip_event = false;
+        if (br_power_tip_update(now, motion.moving, &tip_event)) motion.report_pending = true;
+        if (tip_event) br_motion_update(&motion, now, true);
         bool trial = br_ota_trial();
         if (!br_ota_radio_paused() && br_motion_due(&motion, now)) {
             if (sleeping) { radio_ok = wake_radio(); sleeping = false; }
             else if (!radio_ok) radio_ok = configure();
             voltage = br_power_voltage();
+            br_power_status power;
+            br_power_status_get(&power);
             uint8_t flags = (motion.moving ? BR_FINAL_FLAG_MOVING : 0) |
-                (sensor_ok ? 0 : BR_FINAL_FLAG_SENSOR_FAULT);
+                (sensor_ok ? 0 : BR_FINAL_FLAG_SENSOR_FAULT) |
+                (sensor_ok && power.tip_ready ? BR_FINAL_FLAG_TIP_READY : 0);
             const bool sent = radio_ok &&
-                exchange(sequence, voltage, flags, misses, motion.wake_count);
+                exchange(sequence, voltage, flags, misses, motion.wake_count,
+                         power.tip_count, power.tip_age_s);
             if (!sent && misses != UINT16_MAX) ++misses;
             sequence += 2;
             if (radio_ok) idle_radio();
@@ -213,6 +220,7 @@ int main() {
         }
         if (motion.moving && motion.quiet_deadline < deadline) deadline = motion.quiet_deadline;
         if (sensor_check_at < deadline) deadline = sensor_check_at;
+        if (br_power_tip_deadline() < deadline) deadline = br_power_tip_deadline();
         br_app_wait(deadline > now ? static_cast<uint32_t>(deadline - now) : 0);
     }
 #else

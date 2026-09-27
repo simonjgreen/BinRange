@@ -1,2 +1,2 @@
 #pragma once
-#define BINRANGE_FW_VERSION "0.2.4"
+#define BINRANGE_FW_VERSION "0.2.5"

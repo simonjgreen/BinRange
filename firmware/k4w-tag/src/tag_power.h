@@ -15,11 +15,16 @@ int br_power_sensors_configure(const struct br_motion_config *config);
 bool br_power_sensor_check(void);
 bool br_power_motion_event(void);
 uint16_t br_power_voltage(void);
+bool br_power_tip_update(uint64_t now, bool moving, bool *new_event);
+uint64_t br_power_tip_deadline(void);
 void br_app_wake(void);
 void br_app_wait(uint32_t ms);
 struct br_power_status {
     uint32_t wake_count, irq_count;
     uint16_t battery_mv, misses;
+    uint32_t tip_count, tip_age_s;
+    int32_t tip_error;
+    bool tip_ready;
     int32_t sensor_error;
     bool moving, sleeping, config_pending;
 };

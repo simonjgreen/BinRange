@@ -13,6 +13,10 @@ integration, available through [HACS](https://hacs.xyz/). It supplies the collec
 calendar; BinRange supplies the bin's movement, distance and health.
 A [configurable reminder example](examples/home-assistant/README.md) combines the
 calendar with fresh Home/Out states for put-out and bring-in notifications.
+The optional [tipping package](examples/home-assistant/README.md#tipping-triggered-emptying-messages)
+adds the emptying message below when tipping-capable tag and anchor firmware are
+installed: a tilt beyond 90 degrees is assumed emptied, and due bins confidently
+Out are grouped over 60 seconds. Scheduled reminders remain the fallback.
 
 ## Phone reminders
 
