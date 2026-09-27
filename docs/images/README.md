@@ -5,6 +5,7 @@ and Live Photo videos are not included here.
 
 | Asset | Subject / source |
 | --- | --- |
+| `wall-mounted-anchor-enclosure.png` | User-supplied photo of the installed anchor enclosure, preserved unchanged |
 | `wrover-case-v7.1.0-assembled.jpg` | Accepted v7.1.0 base/lid STL meshes, assembled |
 | `wrover-case-v7.1.0-open.jpg` | The same meshes, separated to show their interiors |
 | `k4w-tag-installed-green-bin.jpg` | User-supplied installation photo, cropped |
@@ -19,10 +20,14 @@ Blender 4.5.3, soft studio lighting and illustrative polymer materials. They
 preserve the printable geometry. They are not photographs of a manufactured
 case. The board is omitted.
 
-Photos are at most 1200 × 900 pixels; renders are 1600 × 1000. All seven images
-are optimized progressive JPEGs. Orientation is baked into the pixels before
+The seven JPEGs have photos at most 1200 × 900 pixels and renders at 1600 × 1000.
+They are optimized progressive JPEGs. Orientation is baked into the pixels before
 export. Each image is copied into a fresh RGB image and encoded without EXIF,
 GPS, XMP, IPTC, comments, embedded thumbnails or source colour profiles.
+
+The wall-mounted enclosure photo is the original 1307 × 1742 PNG. Its only PNG
+chunk types are IHDR, IDAT and IEND; it has no embedded metadata. The supplied
+pixels were inspected and contain no readable device identifiers needing masking.
 
 Readable device QR codes and identifiers are covered with opaque masks before
 resizing. The food-caddy crop also excludes the label on its lid. Model names

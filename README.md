@@ -16,6 +16,13 @@ calendar with fresh Home/Out states for put-out and bring-in notifications.
 
 ## The hardware
 
+The main anchor is now wall mounted in its enclosure, all six bins have tags,
+and the Home Assistant setup is in use.
+
+<img src="docs/images/wall-mounted-anchor-enclosure.png" alt="Installed BinRange anchor in its printed case, mounted alongside the power components inside a clear-lidded wall enclosure" width="600">
+
+*The installed anchor enclosure, photographed by the project owner.*
+
 The anchor has a custom printable case; the battery tags attach to the bins.
 These renders show the accepted **v7.1.0 WROVER case**, using the actual print
 meshes. Colours and surface finish are illustrative.
@@ -37,8 +44,8 @@ Installed KKM K4W tags, shown on three different bins:
 | --- | --- |
 | ![Makerfabs ESP32-WROVER anchor board with USB connected, DW3000 radio module and UWB antenna visible](docs/images/makerfabs-wrover-dw3000-board.jpg) | ![A row of household bins in the outdoor installation](docs/images/tagged-bins-installation.jpg) |
 
-*Real installation and development-board photos. Device QR codes and identifiers
-are obscured; published copies are resized and stripped of metadata. Mounting
+*Real installation and development-board photos. Visible device QR codes and
+identifiers are obscured; published copies contain no embedded metadata. Mounting
 photos document the prototype, not a weatherproofing or coverage guarantee.*
 
 ## See it working
@@ -86,8 +93,9 @@ Battery tags ──UWB──> Fixed anchor ──MQTT──> Home Assistant
 ## Status and limitations
 
 This is an **experimental, working field prototype**, not a turnkey product.
-A six-tag installation has been commissioned; multi-week battery life, installed
-coverage and unattended BLE maintenance are still under evaluation.
+A six-tag installation is in use, with the anchor wall mounted, tags on all bins
+and Home Assistant configured. Multi-week battery life, installed coverage and
+unattended BLE maintenance still need longer-term field evidence.
 
 Default tag behavior is immediate motion reporting, about 5 s while moving,
 settling after 30 s quiet, and a 10 min stationary check-in. Motion sensitivity
@@ -124,6 +132,14 @@ and use your own credentials, tag identities and signing key.
 | [Roadmap](docs/current-work.md) | Remaining project acceptance work |
 
 ## Repository hygiene
+
+The active firmware is in `firmware/anchor` and `firmware/k4w-tag`, with the
+shared radio driver in `firmware/shared`. The Nesso probe and `scripts/` contain
+programming, recovery and host-test tooling. `firmware/tag-emulator` is a bench
+DS-TWR test peer; `firmware/test-rig` is the frozen early SS-TWR experiment.
+Neither is required on the installed bins. Older enclosure versions and their
+verified archive are retained as design history, with their status recorded in
+the [case index](hardware/wrover-case/README.md).
 
 This repository contains reusable source, documentation, synthetic test
 identities and selected screenshots. Local addresses, household calendars,

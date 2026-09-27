@@ -2,7 +2,9 @@
 
 The architecture is settled: motion-triggered battery tags, one powered UWB
 anchor, MQTT, per-tag Home Assistant devices, signed BLE maintenance and SWD
-rescue. The prototype has reached a six-tag field installation.
+rescue. The prototype is in use as a six-tag field installation: the anchor is
+wall mounted in its enclosure, tags are fitted to all bins, and the owner reports
+the Home Assistant side is looking good.
 
 This is the general project roadmap. Household-specific priorities, identifiers,
 addresses, reminder choices and dated observations are deliberately kept outside
@@ -16,6 +18,7 @@ Git. For an existing local installation, consult its ignored deployment notes.
 - Persistent anchor identity and bond-preserving recovery.
 - Multiple real tags commissioned; per-peer Bluetooth store-capacity defect fixed.
 - Separate daily/diagnostic dashboards; freshness distinct from long absence.
+- Anchor enclosure wall mounted and all six bins tagged (owner-reported).
 
 Evidence and qualifications are in [findings](findings.md), not an exhaustive
 chronological build log.
@@ -24,12 +27,12 @@ chronological build log.
 
 | Area | Completion criterion |
 | --- | --- |
-| Physical installation | Stable anchor power, secure weather-appropriate mounting, known orientation and accessible batteries |
+| Installed hardware | Mounting is complete; observe power stability, weather exposure, orientation and battery access in normal use |
 | Coverage / location | Each tag checked at storage and collection, while moving and after settling; distances independently measured; threshold has useful margin |
 | Battery / motion | Meter-checked voltage, representative whole-tag idle/active current, persisted tuning and no excessive nuisance wakes |
 | Reliability | Real fleet activity, missed reports, sensor faults and anchor/broker outages have truthful status and bounded recovery |
 | Maintenance | Repeatable bonded slow-advertising OTA without jig assistance or operator retries, exact active hash/local confirmation, representative post-trial interruptions and safe uncertain outcomes |
-| HA reminders | Real provider calendar/category mapping, stale-safe put-out/return policy, deduplication and explicitly selected notification target |
+| HA reminders | Setup is in use; confirm scheduled put-out/return behavior and stale-data handling over real collection cycles |
 | Handover | Reproducible signed release, recovery/key backup, current instructions and sanitized evidence |
 
 ## Proposed four-week field trial

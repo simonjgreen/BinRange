@@ -17,6 +17,25 @@ static UpdateWebServer server(80);
 static Preferences net_prefs;
 static String hostname;
 
+// Quote every JSON string, including broker settings and arbitrary MQTT text.
+static String json_string(const char *value) {
+  String out = "\"";
+  for (const unsigned char *p = (const unsigned char *)value; *p; ++p) {
+    if (*p == '"' || *p == '\\') {
+      out += '\\';
+      out += (char)*p;
+    } else if (*p < 0x20) {
+      char escaped[7];
+      snprintf(escaped, sizeof(escaped), "\\u%04x", (unsigned)*p);
+      out += escaped;
+    } else {
+      out += (char)*p;
+    }
+  }
+  out += '"';
+  return out;
+}
+
 class HttpUpdateIo : public AdminUploadIo {
  public:
   bool suspend() override {
@@ -61,11 +80,9 @@ static void handle_stats() {
   String j;
   j.reserve(2600);
   j = "{";
-  j += "\"host\":\"" + hostname + "\",";
-  j += "\"role\":" + String((int)ranging_role()) + ",";
+  j += "\"host\":" + json_string(hostname.c_str()) + ",";
   j += "\"radio\":" + String(ranging_radio_ok() ? "true" : "false") + ",";
   j += "\"antdly\":" + String(ranging_antdly()) + ",";
-  j += "\"interval\":" + String(ranging_interval()) + ",";
   j += "\"xtrim\":" + String(ranging_xtrim()) + ",";
   j += "\"phy\":" + String((int)ranging_phy()) + ",";
   j += "\"ok\":" + String(t.ok) + ",";
@@ -105,10 +122,7 @@ static void handle_stats() {
 }
 
 static void handle_config() {
-  if (server.hasArg("role")) {
-    Role r = server.arg("role").toInt() ? ROLE_RESPONDER : ROLE_INITIATOR;
-    if (r != ranging_role()) ranging_set_role(r);
-  }
+  if (!admin_authorize(server, true)) return;
   if (server.hasArg("antdly")) {
     long v = server.arg("antdly").toInt();
     if (v >= 0 && v <= 65535 && v != ranging_antdly()) ranging_set_antdly((uint16_t)v);
@@ -120,10 +134,6 @@ static void handle_config() {
   if (server.hasArg("xtrim")) {
     long v = server.arg("xtrim").toInt();
     if (v >= 0 && v <= 0x7F && v != ranging_xtrim()) ranging_set_xtrim((uint8_t)v);
-  }
-  if (server.hasArg("interval")) {
-    long v = server.arg("interval").toInt();
-    if (v >= 20 && v <= 5000) ranging_set_interval((uint16_t)v);
   }
   if (server.hasArg("host")) {
     String h = server.arg("host");
@@ -145,18 +155,18 @@ static void handle_mqtt_get() {
     String j;
     j.reserve(2400);
     j = "{";
-    j += "\"host\":\"" + String(c.host) + "\",";
+    j += "\"host\":" + json_string(c.host) + ",";
     j += "\"port\":" + String(c.port) + ",";
-    j += "\"user\":\"" + String(c.user) + "\",";
-    j += "\"client_id\":\"" + String(c.client_id) + "\",";
+    j += "\"user\":" + json_string(c.user) + ",";
+    j += "\"client_id\":" + json_string(c.client_id) + ",";
     j += "\"pass_set\":" + String(mqttcfg_has_password() ? "true" : "false") + ",";
     j += "\"connected\":" + String(a.connected ? "true" : "false") + ",";
-    j += "\"broker\":\"" + String(mqtt_broker_desc()) + "\",";
+    j += "\"broker\":" + json_string(mqtt_broker_desc()) + ",";
     j += "\"published\":" + String(a.published) + ",";
     j += "\"failed\":" + String(a.failed) + ",";
     j += "\"reconnects\":" + String(a.reconnects) + ",";
     j += "\"last_rc\":" + String(a.last_rc) + ",";
-    j += "\"last_rc_text\":\"" + String(mqtt_state_text(a.last_rc)) + "\",";
+    j += "\"last_rc_text\":" + json_string(mqtt_state_text(a.last_rc)) + ",";
     j += "\"last_pub_age\":";
     j += a.last_pub_ms ? String(millis() - a.last_pub_ms) : String("null");
     j += ",\"log\":[";
@@ -165,11 +175,7 @@ static void handle_mqtt_get() {
         const char *line = mqtt_log_at(i, &age);
         if (!line) continue;
         if (i) j += ",";
-        // Escape the few characters that can appear in a topic or payload.
-        String t(line);
-        t.replace("\\", "\\\\");
-        t.replace("\"", "\\\"");
-        j += "{\"t\":\"" + t + "\",\"age\":" + String(age) + "}";
+        j += "{\"t\":" + json_string(line) + ",\"age\":" + String(age) + "}";
     }
     j += "]}";
     server.sendHeader("Cache-Control", "no-store");
@@ -177,6 +183,7 @@ static void handle_mqtt_get() {
 }
 
 static void handle_mqtt_post() {
+    if (!admin_authorize(server, true)) return;
     BrokerCfg c;
     mqttcfg_load(&c);
     if (server.hasArg("host"))
@@ -198,6 +205,7 @@ static void handle_mqtt_post() {
 }
 
 static void handle_reset() {
+  if (!admin_authorize(server, true)) return;
   stats_reset();
   server.send(200, "application/json", "{\"ok\":true}");
 }
@@ -205,6 +213,7 @@ static void handle_reset() {
 // A hostname change only takes effect on the next boot, and a remote board
 // has no reset button within reach.
 static void handle_reboot() {
+  if (!admin_authorize(server, true)) return;
   server.send(200, "application/json", "{\"ok\":true}");
   delay(300);
   ESP.restart();

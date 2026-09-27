@@ -85,6 +85,9 @@ checks live in `scripts/test_*.py`; run the `test_k4w*.py` and `test_anchor*.py`
 groups with `python -m unittest discover -s scripts -p 'PATTERN'`.
 These checks do not flash hardware.
 
+The web-page regression test also requires Node.js on `PATH`. It executes the
+shipped JavaScript with a simulated page and HTTP responses, without a device.
+
 The anchor integration tests compile against the installed PlatformIO framework
 and pinned NimBLE library. Build the anchor first to obtain them. Set
 `BINRANGE_NIMBLE_REFERENCE` to a separate, unmodified NimBLE-Arduino 2.5.1 source

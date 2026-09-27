@@ -15,11 +15,9 @@ Ranging must not depend on Wi-Fi, broker or HA availability.
 | --- | --- |
 | `binrange/anchor/<anchor>/status` | Retained availability / last will |
 | `binrange/anchor/<anchor>/state` | Radio/network/system diagnostics |
-| `binrange/anchor/<anchor>/cfg` | Current radio configuration |
-| `binrange/anchor/<anchor>/cmd` | Existing non-retained normal controls |
+| `binrange/anchor/<anchor>/cmd/<command>` | Non-retained radio/diagnostic controls; current radio settings are in anchor state |
 | `binrange/tag/<tag>/config` | Retained adoption/name/settings |
 | `binrange/tag/<tag>/anchor/<anchor>/state` | Distance, signal quality, telemetry |
-| `binrange/tag/<tag>/status` | Tag check-in availability |
 | `binrange/tag/<tag>/anchor/<anchor>/update` | Status-only tag updater diagnostics |
 | `binrange/anchor/<anchor>/update` | Status-only anchor updater diagnostics |
 
@@ -112,6 +110,11 @@ Normal HA controls cover radio/diagnostics. Pairing, signed upload and tag updat
 require separate admin authorization in the anchor UI. Updater MQTT entities are
 status-only; broker credentials do not grant admin authority.
 
+The anchor's web settings, broker changes, counter reset and reboot also require
+the admin password. The page authenticates before each action and sends the
+per-boot CSRF token with its POST. Failed actions are shown and are not retried
+automatically. Read-only diagnostics remain available without signing in.
+
 Use trusted-LAN HTTP/MQTT, not direct Internet exposure. Broker reconnects publish
 coherent last state with its true age.
 
@@ -164,6 +167,7 @@ limit publishing on these command topics to authorized Home Assistant clients.
 Removing adoption cancels queued settings work and removes retained settings
 state and discovery. It does not erase the tag's saved settings or Bluetooth bond.
 
-The anchor web UI's radio interval and the adoption record's `stale_after` remain
+The anchor always responds to tag-initiated exchanges; it has no reporting
+interval of its own. The adoption record's `stale_after` is a liveness threshold,
 separate from the tag's reporting intervals. Longer intervals reduce reporting
 frequency; battery-life effects still need whole-device measurements.

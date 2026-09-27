@@ -6,9 +6,6 @@
 #define PIN_IRQ 34
 #define PIN_SS  4
 
-// ---- Roles ----
-enum Role : uint8_t { ROLE_INITIATOR = 0, ROLE_RESPONDER = 1 };
-
 // ---- Frame layout (from the Makerfabs / Qorvo SS-TWR example) ----
 #define ALL_MSG_COMMON_LEN      10
 #define ALL_MSG_SN_IDX          2
@@ -82,7 +79,6 @@ static const PhyTiming PHY_TIMING[PHY_COUNT] = {
 
 // Defaults; antenna delay is runtime-tunable and persisted in NVS.
 #define DEFAULT_ANT_DLY      16356
-#define DEFAULT_INTERVAL_MS  100
 
 // Rolling window used for the live statistics and the chart.
 #define STATS_WINDOW 256

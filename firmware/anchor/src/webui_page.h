@@ -4,7 +4,7 @@
 static const char INDEX_HTML[] PROGMEM = R"HTML(
 <!doctype html><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>UWB link</title>
+<title>BinRange anchor</title>
 <style>
 :root{--bg:#0f1115;--fg:#e6e8ee;--dim:#8b93a7;--ok:#3ddc84;--bad:#ff5f56;--acc:#5b9dff;--card:#171a21}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif;padding:16px}
@@ -31,7 +31,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 td{padding:3px 0}td:last-child{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 <div class=wrap>
-<h1>UWB link test — <span id=host></span> · <span id=role></span> · <span id=radio class=pill></span></h1>
+<h1>BinRange anchor — <span id=host></span> · Responder · <span id=radio class=pill></span></h1>
+<div id=actionStatus class=note role=status aria-live=polite></div>
 
 <div class=card>
   <div class=big><span id=dist>—</span><small> m</small></div>
@@ -68,20 +69,18 @@ td{padding:3px 0}td:last-child{text-align:right;font-variant-numeric:tabular-num
   </table>
   <div class=note id=nlos></div>
   <div style=margin-top:10px><button onclick=reset()>Reset counters</button>
-  <button onclick="if(confirm(&quot;Reboot this board?&quot;))fetch(&quot;/api/reboot&quot;,{method:&quot;POST&quot;})">Reboot</button></div>
+  <button onclick=reboot()>Reboot</button></div>
 </div>
 
 <div class=card>
   <div class=k style=margin-bottom:6px>Settings</div>
   <div class=row>
-    <div><label>Role</label>
-      <select id=s_role><option value=0>Initiator</option><option value=1>Responder</option></select></div>
     <div><label>PHY profile</label>
       <select id=s_phy><option value=0>Short — 6.8M / 128</option><option value=1>Long — 850k / 1024</option><option value=2>Max — 850k / 2048</option></select></div>
-    <div><label>Interval (ms)</label><input id=s_int type=number min=20 max=5000 style=width:90px></div>
     <div><label>Hostname</label><input id=s_host style=width:130px></div>
     <button onclick=save()>Apply</button>
   </div>
+  <div class=note>Settings, counter resets and reboot require the admin password. Tags control their own reporting intervals.</div>
   <label>Antenna delay: <b id=s_adv></b> <span class=note>(changing this shifts all distances)</span></label>
   <input id=s_ad type=range min=15800 max=17000 step=1 oninput="s_adv.textContent=this.value">
   <div class=note>Put the boards a known distance apart, then trim until the reading matches.
@@ -121,7 +120,7 @@ td{padding:3px 0}td:last-child{text-align:right;font-variant-numeric:tabular-num
 <div class=card>
   <div class=k style=margin-bottom:6px>Tag maintenance</div>
   <a href=/tag-updates>Pair tags and manage signed firmware updates</a>
-  <div class=note>Uses the separate admin password. Progress and confirmed results appear per tag.</div>
+  <div class=note>Uses the same admin password as anchor settings. Progress and confirmed results appear per tag.</div>
 </div>
 
 <div class=card>
@@ -169,11 +168,11 @@ $('anchorUpload').addEventListener('submit',async event=>{
   }
 });
 let touched=false;
-['s_role','s_int','s_host','s_ad','s_phy'].forEach(i=>$(i).addEventListener('input',()=>touched=true));
+['s_host','s_ad','s_phy'].forEach(i=>$(i).addEventListener('input',()=>touched=true));
 
 async function tick(){
   let r; try{ r=await (await fetch('/api/stats')).json(); }catch(e){ return; }
-  $('host').textContent=r.host; $('role').textContent=r.role?'Responder':'Initiator';
+  $('host').textContent=r.host;
   const rad=$('radio'); rad.textContent=r.radio?'radio ok':'radio fault';
   rad.className='pill '+(r.radio?'on':'off');
 
@@ -195,7 +194,7 @@ async function tick(){
     $('nlos').textContent='RSSI − first path = '+d.toFixed(1)+' dB — '+
       (d>6?'suggests obstructed / non-line-of-sight':'consistent with line of sight');}
 
-  if(!touched){$('s_role').value=r.role;$('s_int').value=r.interval;$('s_phy').value=r.phy;
+  if(!touched){$('s_phy').value=r.phy;
     $('s_host').value=r.host;$('s_ad').value=r.antdly;$('s_adv').textContent=r.antdly;}
   draw(r.chart);
 }
@@ -216,12 +215,39 @@ function draw(d){
   x.fillStyle='#ff5f56';
   d.forEach((p,i)=>{if(p==null)x.fillRect(X(i)-1.5,0,3,H);});
 }
-async function save(){
-  const q=new URLSearchParams({role:$('s_role').value,interval:$('s_int').value,
-    antdly:$('s_ad').value,host:$('s_host').value,phy:$('s_phy').value});
-  await fetch('/api/config?'+q,{method:'POST'}); touched=false; tick();
+// Authenticate before each explicit action; never retry a mutation automatically.
+let actionBusy=false;
+async function adminMutation(path,body=new URLSearchParams()){
+  if(actionBusy)return false;
+  actionBusy=true;
+  const status=$('actionStatus'),ctl=new AbortController();
+  const timeout=setTimeout(()=>ctl.abort(),10000);
+  let posted=false;
+  try{
+    status.textContent='Authenticating…';
+    const admin=await fetch('/api/admin',{credentials:'same-origin',cache:'no-store',signal:ctl.signal});
+    if(!admin.ok)throw Error('Admin authentication failed ('+admin.status+').');
+    const auth=await admin.json();
+    if(!auth.csrf)throw Error('Admin CSRF token unavailable.');
+    posted=true;
+    const response=await fetch(path,{method:'POST',credentials:'same-origin',
+      headers:{'X-BinRange-CSRF':auth.csrf},body,signal:ctl.signal});
+    if(!response.ok)throw Error('Request rejected ('+response.status+').');
+    status.textContent='Request accepted.';
+    return true;
+  }catch(error){
+    status.textContent=error.message+(posted?' Check anchor status before retrying; the outcome may be unknown.':'');
+    return false;
+  }finally{clearTimeout(timeout);actionBusy=false;}
 }
-async function reset(){ await fetch('/api/reset',{method:'POST'}); tick(); }
+async function save(){
+  const q=new URLSearchParams({antdly:$('s_ad').value,host:$('s_host').value,phy:$('s_phy').value});
+  if(await adminMutation('/api/config',q)){touched=false;tick();}
+}
+async function reset(){if(await adminMutation('/api/reset'))tick();}
+async function reboot(){
+  if(confirm('Reboot this anchor?'))await adminMutation('/api/reboot');
+}
 let mtouched=false;
 ['m_host','m_port','m_user','m_pass','m_cid'].forEach(i=>
   $(i).addEventListener('input',()=>mtouched=true));
@@ -251,8 +277,9 @@ async function mtick(){
 async function saveMqtt(){
   const q=new URLSearchParams({host:$('m_host').value,port:$('m_port').value,
     user:$('m_user').value,client_id:$('m_cid').value,pass:$('m_pass').value});
-  await fetch('/api/mqtt?'+q,{method:'POST'});
-  $('m_pass').value=''; mtouched=false; mtick();
+  if(await adminMutation('/api/mqtt',q)){
+    $('m_pass').value=''; mtouched=false; mtick();
+  }
 }
 setInterval(tick,1000); tick();
 setInterval(mtick,3000); mtick();

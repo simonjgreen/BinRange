@@ -15,9 +15,7 @@ static TaskHandle_t task_h = nullptr;
 static volatile bool radio_ok = false;
 static volatile bool suspended = false;
 
-static volatile Role     cur_role     = ROLE_INITIATOR;
 static volatile uint16_t cur_antdly   = DEFAULT_ANT_DLY;
-static volatile uint16_t cur_interval = DEFAULT_INTERVAL_MS;
 // The OTP crystal trim is unprogrammed on these boards (XTRIM OTP READ FAIL),
 // so the driver defaults to 0x2E. Made settable so the two boards can be
 // trimmed to agree with each other.
@@ -56,14 +54,10 @@ static uint8_t frame_seq_nb = 0;
 static uint8_t rx_buffer[33];
 static uint32_t status_reg = 0;
 
-Role     ranging_role()     { return cur_role; }
 uint16_t ranging_antdly()   { return cur_antdly; }
-uint16_t ranging_interval() { return cur_interval; }
 bool     ranging_radio_ok() { return radio_ok; }
 
-void ranging_set_role(Role r)        { cur_role = r;     prefs.putUChar("role", (uint8_t)r); pending_reconfig = true; }
 void ranging_set_antdly(uint16_t d)  { cur_antdly = d;   prefs.putUShort("antdly", d);       pending_reconfig = true; }
-void ranging_set_interval(uint16_t m){ cur_interval = m; prefs.putUShort("interval", m); }
 uint8_t ranging_xtrim() { return cur_xtrim; }
 void ranging_set_xtrim(uint8_t v) { cur_xtrim = v & 0x7F; prefs.putUChar("xtrim", cur_xtrim); pending_reconfig = true; }
 Phy  ranging_phy() { return cur_phy; }
@@ -134,8 +128,7 @@ static bool radio_configure() {
   dwt_setlnapamode(DWT_LNA_ENABLE | DWT_PA_ENABLE);
 
   radio_ok = true;
-  Serial.printf("[uwb] configured as %s, antenna delay %u\n",
-                cur_role == ROLE_INITIATOR ? "INITIATOR" : "RESPONDER", cur_antdly);
+  Serial.printf("[uwb] configured as RESPONDER, antenna delay %u\n", cur_antdly);
   return true;
 }
 
@@ -327,12 +320,9 @@ static void radio_task(void *) {
 
 void ranging_init() {
   prefs.begin("uwb", false);
-  cur_role     = (Role)prefs.getUChar("role", ROLE_INITIATOR);
   cur_antdly   = prefs.getUShort("antdly", DEFAULT_ANT_DLY);
-  cur_interval = prefs.getUShort("interval", DEFAULT_INTERVAL_MS);
   cur_xtrim    = prefs.getUChar("xtrim", 0x2E);
   cur_phy      = (Phy)prefs.getUChar("phy", PHY_LONG);
-  cur_role     = ROLE_RESPONDER;   // an anchor is always the responder
   evt_q = xQueueCreate(32, sizeof(RangeEvent));
   radio_configure();
 }
