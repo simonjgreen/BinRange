@@ -7,20 +7,6 @@ replaced by placeholders. It uses the brilliant
 integration for collection dates. The descriptive action names are also shown in
 Home Assistant's visual automation editor.
 
-The public YAML was checked against the installed export on 27 September 2026.
-It preserves the reminder logic while replacing household calendar, recipient,
-helper and bin identifiers with placeholders. See the
-[notification screenshots](../../README.md#phone-reminders) for sample messages,
-including an explicitly labelled emptying-confirmed wording mock-up.
-
-## Installed backup
-
-The local project also keeps exact exports from the installed automation under
-`local-backups/notification-automation/`, with restore instructions in that
-directory's `README.md`. These contain the household's entity IDs and stay in
-the project's Git-ignored backup directory. Use an installed export to restore
-the same household setup; use the placeholder YAML above for another installation.
-
 ## Schedule
 
 All times use Home Assistant's configured local timezone, including its DST rules.
