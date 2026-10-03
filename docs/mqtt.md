@@ -82,6 +82,12 @@ Keep deployment-specific card layouts/entity mappings outside the public source.
 
 A simple initial location rule is a chosen distance threshold:
 fresh distance inside it is Home, outside is Out, otherwise Unknown.
+For bins that leave radio coverage, retain an observed Out state until a fresh
+inside-threshold reading confirms Home. Store that departure in a restored HA
+helper with no configured initial value; silence must not clear it, including
+across HA restarts. Home followed by silence still becomes Unknown. Keep range
+freshness and missing-check-in diagnostics unchanged so presumed Out does not
+claim a live radio connection.
 The threshold must suit the installed storage/collection geometry; one anchor
 cannot distinguish equal-radius locations. Hysteresis/settling should be explicit
 if added. Row timestamps are HA updates, not necessarily physical motion times.
@@ -115,8 +121,9 @@ placeholder YAML combining due collections with confident Home/Out state. It
 groups reminders, prevents duplicate phase attempts, handles changed schedules
 and supports put-out plus return reminders. Configure its entity IDs, provider
 categories, persistent Text helpers and phone notification group before enabling.
-Unknown/stale data must not accuse someone of forgetting a bin. Elapsed time
-alone proves neither collection nor return. Deliberately replace overlapping
+Put-out reminders require fresh Home. Return reminders may use a remembered Out
+departure while reception is stale; Unknown/unavailable locations are excluded.
+Elapsed time alone proves neither departure, collection nor return. Deliberately replace overlapping
 old automations rather than installing duplicates.
 
 ## Controls and security

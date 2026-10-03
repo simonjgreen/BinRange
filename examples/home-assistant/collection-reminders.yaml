@@ -200,7 +200,7 @@ actions:
           {% for bin in bins %}
             {% set location = states('sensor.' ~ bin.slug ~ '_location') %}
             {% set fresh = is_state('binary_sensor.' ~ bin.slug ~ '_range_freshness_a', 'off') %}
-            {% set ns.items = ns.items + [(bin.slug, location if fresh else 'unknown')] %}
+            {% set ns.items = ns.items + [(bin.slug, location if fresh or location == 'Out' else 'unknown')] %}
           {% endfor %}
           {{ dict(ns.items) }}
         sent_phases: '{{ states(''input_text.replace_me_reminder_phases'') | from_json(none) }}'

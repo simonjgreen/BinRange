@@ -53,8 +53,12 @@ Replace every `replace_me_*` placeholder, including occurrences inside templates
 5. Each slug builds `sensor.<slug>_location` and
    `binary_sensor.<slug>_range_freshness_a`. Adapt those templates if your entity
    naming differs. Location must be `Home`, `Out` or unknown; the freshness
-   entity must be **off when fresh**. Unknown, unavailable and stale positions
-   are excluded. Establish a useful location threshold for your installation.
+   entity must be **off when fresh**. Put-out reminders require fresh Home.
+   Return reminders also accept presumed Out: a previously observed departure
+   retained through loss of reception until a fresh Home reading arrives.
+   Unknown and unavailable locations are excluded. Establish a useful location
+   threshold for your installation. Keep reception health separate from location;
+   an Out state can represent the last observed departure, not a current range.
 6. Paste the YAML as a single automation in HA's automation YAML editor. If you
    maintain an `automations.yaml` list instead, add it as one list item. Give it
    a unique automation ID if another copy already exists. Deliberately disable

@@ -12,7 +12,7 @@ Collection scheduling for the Home Assistant automations leverages the brilliant
 integration, available through [HACS](https://hacs.xyz/). It supplies the collection
 calendar; BinRange supplies the bin's movement, distance and health.
 A [configurable reminder example](examples/home-assistant/README.md) combines the
-calendar with fresh Home/Out states for put-out and bring-in notifications.
+calendar with fresh Home and observed or presumed Out states for put-out and bring-in notifications.
 The optional [tipping package](examples/home-assistant/README.md#tipping-triggered-emptying-messages)
 adds the emptying message below when tipping-capable tag and anchor firmware are
 installed: a tilt beyond 90 degrees is assumed emptied, and due bins confidently
@@ -87,7 +87,9 @@ delivery guarantee or a validated obstruction detector.*
 
 The important distinction is between **a bin that is home** and **a bin whose
 last known reading was home**. Stale data stays visible as stale; silence must
-not be mistaken for a bin being put out or brought back.
+not be mistaken for a bin being put out or brought back. Once a departure has
+been observed, location can remain Out through lost reception until a fresh
+Home reading confirms its return; reception health remains separate.
 
 ## How it fits together
 
