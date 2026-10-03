@@ -171,6 +171,6 @@ On an existing working installation, consult ignored
 before touching devices. Public examples are not deployment instructions for
 someone else's hardware. Do not blindly replay first installation on a paired tag.
 
-Vendor notices remain in their source files. No blanket project licence has
-been selected yet; public availability alone does not grant redistribution
-rights. See [third-party notes](docs/third-party.md).
+BinRange's original code and documentation are licensed under the
+[MIT License](LICENSE). Third-party components retain their own licences and
+vendor notices. See [third-party notes](docs/third-party.md).

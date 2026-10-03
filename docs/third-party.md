@@ -1,7 +1,8 @@
 # Third-party components and publication notes
 
-No blanket licence for the project's original code has been selected yet.
-Do not infer redistribution permission merely from a public repository.
+The project's original code and documentation are licensed under the
+[MIT License](../LICENSE). Third-party components retain their own licences
+and copyright notices, as described below.
 
 - **Waste Collection Schedule:** collection dates are supplied by
   [mampfes/hacs_waste_collection_schedule](https://github.com/mampfes/hacs_waste_collection_schedule),
